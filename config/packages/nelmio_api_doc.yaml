@@ -4,6 +4,15 @@ nelmio_api_doc:
             title: Traiteur API
             description: Documentation de l'API Traiteur Vite & Gourmand.
             version: 1.0.0
-    areas: # to filter documented areas
+        components:
+            securitySchemes:
+                ApiToken:
+                    type: apiKey
+                    in: header
+                    name: X-AUTH-TOKEN
+        security:
+            - ApiToken: []
+
+    areas:
         path_patterns:
-            - ^/api(?!/doc$) # Accepts routes under /api except /api/doc
+            - ^/api(?!/doc$)

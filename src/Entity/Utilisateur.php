@@ -48,6 +48,20 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'password', type: 'string', length: 255, nullable: false)]
     private $password;
 
+    #[ORM\Column(name: 'api_token', type: 'string', length: 255, nullable: true)]
+    private ?string $apiToken = null;
+    public function getApiToken(): ?string
+    {
+    return $this->apiToken;
+    }
+
+    public function setApiToken(?string $apiToken): static
+    {
+    $this->apiToken = $apiToken;
+
+    return $this;
+}
+
     /**
      * @var string
      */
