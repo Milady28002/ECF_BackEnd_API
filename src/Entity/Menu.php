@@ -2,83 +2,57 @@
 
 namespace App\Entity;
 
+use App\Repository\MenuRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * Menu
- */
 #[ORM\Table(name: 'menu')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: MenuRepository::class)]
+
 class Menu
 {
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'menu_id', type: 'integer', nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $menuId;
+    #[ORM\Column(name: 'menu_id', type: 'integer', nullable: false)]
+    private ?int $menuId = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'titre', type: 'string', length: 50, nullable: false)]
-    private $titre;
+    private ?string $titre = null;
 
-    /**
-     * @var int
-     */
     #[ORM\Column(name: 'nombre_personne_minimum', type: 'integer', nullable: false)]
-    private $nombrePersonneMinimum;
+    private ?int $nombrePersonneMinimum = null;
 
-    /**
-     * @var float
-     */
     #[ORM\Column(name: 'prix_par_personne', type: 'float', precision: 10, scale: 0, nullable: false)]
-    private $prixParPersonne;
+    private ?float $prixParPersonne = null;
 
-    /**
-     * @var string
-     */
-    #[ORM\Column(name: 'regime', type: 'string', length: 50, nullable: false)]
-    private $regime;
+    #[ORM\Column(name: 'description', type: 'text', nullable: false)]
+    private ?string $description = null;
 
-    /**
-     * @var string
-     */
-    #[ORM\Column(name: 'description', type: 'string', length: 50, nullable: false)]
-    private $description;
-
-    /**
-     * @var int
-     */
     #[ORM\Column(name: 'quantite_restante', type: 'integer', nullable: false)]
-    private $quantiteRestante;
+    private ?int $quantiteRestante = null;
 
-    /**
-     * @var \Doctrine\Common\Collections\Collection
-     */
-    #[ORM\ManyToMany(targetEntity: \Commande::class, mappedBy: 'menu')]
-    private $commande = array();
+    #[ORM\ManyToOne(targetEntity: Regime::class)]
+    #[ORM\JoinColumn(name: 'regime_id', referencedColumnName: 'regime_id', nullable: false)]
+    private ?Regime $regime = null;
 
-    /**
-     * @var \Doctrine\Common\Collections\Collection
-     */
+    #[ORM\ManyToOne(targetEntity: Theme::class)]
+    #[ORM\JoinColumn(name: 'theme_id', referencedColumnName: 'theme_id', nullable: false)]
+    private ?Theme $theme = null;
+
+    #[ORM\ManyToMany(targetEntity: Commande::class, mappedBy: 'menu')]
+    private Collection $commande;
+
     #[ORM\JoinTable(name: 'menu_plat')]
     #[ORM\JoinColumn(name: 'menu_id', referencedColumnName: 'menu_id')]
     #[ORM\InverseJoinColumn(name: 'plat_id', referencedColumnName: 'plat_id')]
-    #[ORM\ManyToMany(targetEntity: \Plat::class, inversedBy: 'menu')]
-    private $plat = array();
+    #[ORM\ManyToMany(targetEntity: Plat::class, inversedBy: 'menu')]
+    private Collection $plat;
 
-    /**
-     * Constructor
-     */
     public function __construct()
     {
-        $this->commande = new \Doctrine\Common\Collections\ArrayCollection();
-        $this->plat = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->commande = new ArrayCollection();
+        $this->plat = new ArrayCollection();
     }
 
     public function getMenuId(): ?int
@@ -94,7 +68,6 @@ class Menu
     public function setTitre(string $titre): static
     {
         $this->titre = $titre;
-
         return $this;
     }
 
@@ -106,7 +79,6 @@ class Menu
     public function setNombrePersonneMinimum(int $nombrePersonneMinimum): static
     {
         $this->nombrePersonneMinimum = $nombrePersonneMinimum;
-
         return $this;
     }
 
@@ -118,19 +90,6 @@ class Menu
     public function setPrixParPersonne(float $prixParPersonne): static
     {
         $this->prixParPersonne = $prixParPersonne;
-
-        return $this;
-    }
-
-    public function getRegime(): ?string
-    {
-        return $this->regime;
-    }
-
-    public function setRegime(string $regime): static
-    {
-        $this->regime = $regime;
-
         return $this;
     }
 
@@ -142,7 +101,6 @@ class Menu
     public function setDescription(string $description): static
     {
         $this->description = $description;
-
         return $this;
     }
 
@@ -154,13 +112,31 @@ class Menu
     public function setQuantiteRestante(int $quantiteRestante): static
     {
         $this->quantiteRestante = $quantiteRestante;
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, Commande>
-     */
+    public function getRegime(): ?Regime
+    {
+        return $this->regime;
+    }
+
+    public function setRegime(?Regime $regime): static
+    {
+        $this->regime = $regime;
+        return $this;
+    }
+
+    public function getTheme(): ?Theme
+    {
+        return $this->theme;
+    }
+
+    public function setTheme(?Theme $theme): static
+    {
+        $this->theme = $theme;
+        return $this;
+    }
+
     public function getCommande(): Collection
     {
         return $this->commande;
@@ -185,9 +161,6 @@ class Menu
         return $this;
     }
 
-    /**
-     * @return Collection<int, Plat>
-     */
     public function getPlat(): Collection
     {
         return $this->plat;
@@ -205,8 +178,6 @@ class Menu
     public function removePlat(Plat $plat): static
     {
         $this->plat->removeElement($plat);
-
         return $this;
     }
-
 }

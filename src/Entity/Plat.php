@@ -6,12 +6,15 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\PlatRepository;
+use App\Entity\Menu;
+use App\Entity\Allergene;
 
 /**
  * Plat
  */
 #[ORM\Table(name: 'plat')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: PlatRepository::class)]
 class Plat
 {
     /**
@@ -31,13 +34,13 @@ class Plat
     /**
      * @var string|null
      */
-    #[ORM\Column(name: 'photo', type: 'blob', length: 65535, nullable: true, options: ['default' => 'NULL'])]
-    private $photo = 'NULL';
+    #[ORM\Column(name: 'photo', type: 'blob', length: 65535, nullable: true, options: ['default' => null])]
+    private $photo = null;
 
     /**
      * @var \Doctrine\Common\Collections\Collection
      */
-    #[ORM\ManyToMany(targetEntity: \Menu::class, mappedBy: 'plat')]
+    #[ORM\ManyToMany(targetEntity: Menu::class, mappedBy: 'plat')]
     private $menu = array();
 
     /**
@@ -46,7 +49,7 @@ class Plat
     #[ORM\JoinTable(name: 'plat_allergene')]
     #[ORM\JoinColumn(name: 'plat_id', referencedColumnName: 'plat_id')]
     #[ORM\InverseJoinColumn(name: 'allergene_id', referencedColumnName: 'allergene_id')]
-    #[ORM\ManyToMany(targetEntity: \Allergene::class, inversedBy: 'plat')]
+    #[ORM\ManyToMany(targetEntity: Allergene::class, inversedBy: 'plat')]
     private $allergene = array();
 
     /**

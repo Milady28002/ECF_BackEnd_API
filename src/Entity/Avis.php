@@ -42,7 +42,7 @@ class Avis
      * @var \Utilisateur
      */
     #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id')]
-    #[ORM\ManyToOne(targetEntity: \Utilisateur::class)]
+    #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
     private $utilisateur;
 
     public function getAvisId(): ?int

@@ -78,7 +78,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinTable(name: 'utilisateur_role')]
     #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id')]
     #[ORM\InverseJoinColumn(name: 'role_id', referencedColumnName: 'role_id')]
-    #[ORM\ManyToMany(targetEntity: \Role::class, inversedBy: 'utilisateur')]
+    #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'utilisateur')]
     private $role = array();
 
     /**

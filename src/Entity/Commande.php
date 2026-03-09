@@ -81,7 +81,7 @@ class Commande
      * @var \Utilisateur
      */
     #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id')]
-    #[ORM\ManyToOne(targetEntity: \Utilisateur::class)]
+    #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
     private $utilisateur;
 
     /**
@@ -90,7 +90,7 @@ class Commande
     #[ORM\JoinTable(name: 'commande_menu')]
     #[ORM\JoinColumn(name: 'commande_id', referencedColumnName: 'numero_commande')]
     #[ORM\InverseJoinColumn(name: 'menu_id', referencedColumnName: 'menu_id')]
-    #[ORM\ManyToMany(targetEntity: \Menu::class, inversedBy: 'commande')]
+    #[ORM\ManyToMany(targetEntity: Menu::class, inversedBy: 'commande')]
     private $menu = array();
 
     /**

@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
+use App\Entity\Utilisateur;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Annotations as OA;
@@ -53,7 +53,7 @@ class SecurityController extends AbstractController
      */
     public function register(Request $request): JsonResponse
     {
-        $user = $this->serializer->deserialize($request->getContent(), User::class, 'json');
+        $user = $this->serializer->deserialize($request->getContent(), Utilisateur::class, 'json');
         $user->setPassword($this->passwordHasher->hashPassword($user, $user->getPassword()));
         $user->setCreatedAt(new DateTimeImmutable());
 
@@ -91,7 +91,7 @@ class SecurityController extends AbstractController
      *      )
      * )
      */
-    public function login(#[CurrentUser] ?User $user): JsonResponse
+    public function login(#[CurrentUser] ?Utilisateur $user): JsonResponse
     {
         if (null === $user) {
             return new JsonResponse(['message' => 'Missing credentials'], Response::HTTP_UNAUTHORIZED);
@@ -99,7 +99,7 @@ class SecurityController extends AbstractController
 
         return new JsonResponse([
             'user'  => $user->getUserIdentifier(),
-            'apiToken' => $user->getApiToken(),
+            //'apiToken' => $user->getApiToken(),
             'roles' => $user->getRoles(),
         ]);
     }
@@ -145,7 +145,7 @@ class SecurityController extends AbstractController
     {
         $user = $this->serializer->deserialize(
             $request->getContent(),
-            User::class,
+            Utilisateur::class,
             'json',
             [AbstractNormalizer::OBJECT_TO_POPULATE => $this->getUser()],
         );

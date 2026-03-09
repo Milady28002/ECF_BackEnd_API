@@ -30,7 +30,7 @@ class Allergene
     /**
      * @var \Doctrine\Common\Collections\Collection
      */
-    #[ORM\ManyToMany(targetEntity: \Plat::class, mappedBy: 'allergene')]
+    #[ORM\ManyToMany(targetEntity: Plat::class, mappedBy: 'allergene')]
     private $plat = array();
 
     /**
