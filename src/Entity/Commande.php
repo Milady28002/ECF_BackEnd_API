@@ -65,6 +65,12 @@ class Commande
     #[ORM\Column(name: 'statut', type: 'string', length: 50, nullable: false)]
     private $statut;
 
+    #[ORM\Column(name: 'motif_annulation', type: 'text', nullable: true)]
+    private ?string $motifAnnulation = null;
+
+    #[ORM\Column(name: 'mode_contact_annulation', type: 'string', length: 50, nullable: true)]
+    private ?string $modeContactAnnulation = null;
+
     /**
      * @var bool
      */
@@ -190,6 +196,30 @@ class Commande
         return $this;
     }
 
+    public function getMotifAnnulation(): ?string
+    {
+        return $this->motifAnnulation;
+    }
+
+    public function setMotifAnnulation(?string $motifAnnulation): static
+    {
+        $this->motifAnnulation = $motifAnnulation;
+
+        return $this;
+    }
+
+    public function getModeContactAnnulation(): ?string
+    {
+        return $this->modeContactAnnulation;
+    }
+
+    public function setModeContactAnnulation(?string $modeContactAnnulation): static
+    {
+        $this->modeContactAnnulation = $modeContactAnnulation;
+
+        return $this;
+    }
+
     public function isPretMateriel(): ?bool
     {
         return $this->pretMateriel;
@@ -249,5 +279,7 @@ class Commande
 
         return $this;
     }
+
+
 
 }

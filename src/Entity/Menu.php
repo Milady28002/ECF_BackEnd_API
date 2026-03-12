@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 class Menu
 {
+
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ORM\Column(name: 'menu_id', type: 'integer', nullable: false)]
@@ -40,6 +41,9 @@ class Menu
     #[ORM\JoinColumn(name: 'theme_id', referencedColumnName: 'theme_id', nullable: false)]
     private ?Theme $theme = null;
 
+    #[ORM\Column(name: 'image', type: 'string', length: 255, nullable: true)]
+    private ?string $image = null;
+
     #[ORM\ManyToMany(targetEntity: Commande::class, mappedBy: 'menu')]
     private Collection $commande;
 
@@ -48,6 +52,10 @@ class Menu
     #[ORM\InverseJoinColumn(name: 'plat_id', referencedColumnName: 'plat_id')]
     #[ORM\ManyToMany(targetEntity: Plat::class, inversedBy: 'menu')]
     private Collection $plat;
+
+    #[ORM\Column(name: 'conditions_menu', type: 'text', nullable: true)]
+    private ?string $conditionsMenu = null;
+    
 
     public function __construct()
     {
@@ -178,6 +186,26 @@ class Menu
     public function removePlat(Plat $plat): static
     {
         $this->plat->removeElement($plat);
+        return $this;
+    }
+    public function getImage(): ?string
+    {
+        return $this->image;
+    }
+    
+    public function getConditionsMenu(): ?string
+    {
+    return $this->conditionsMenu;
+    }
+
+    public function setConditionsMenu(?string $conditionsMenu): static
+    {
+        $this->conditionsMenu = $conditionsMenu;
+        return $this;
+    }
+    public function setImage(?string $image): static
+    {
+        $this->image = $image;
         return $this;
     }
 }

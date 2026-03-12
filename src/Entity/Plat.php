@@ -17,6 +17,7 @@ use App\Entity\Allergene;
 #[ORM\Entity(repositoryClass: PlatRepository::class)]
 class Plat
 {
+
     /**
      * @var int
      */
@@ -24,6 +25,9 @@ class Plat
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $platId;
+
+    #[ORM\Column(name: 'type_plat', type: 'string', length: 20)]
+    private ?string $typePlat = null;
 
     /**
      * @var string
@@ -59,6 +63,17 @@ class Plat
     {
         $this->menu = new \Doctrine\Common\Collections\ArrayCollection();
         $this->allergene = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+
+     public function getTypePlat(): ?string
+    {
+        return $this->typePlat;
+    }
+
+    public function setTypePlat(string $typePlat): static
+    {
+        $this->typePlat = $typePlat;
+        return $this;
     }
 
     public function getPlatId(): ?int
