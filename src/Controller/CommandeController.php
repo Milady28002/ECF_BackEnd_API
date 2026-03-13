@@ -78,11 +78,18 @@ final class CommandeController extends AbstractController
         }
 
         $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
+        $minimum = $menu->getNombrePersonneMinimum();
+
+        if ($nombrePersonnes >= $minimum + 5) {
+            $prixMenu = $prixMenu * 0.9;
+        }
+
         $prixLivraison = isset($payload['prix_livraison']) ? (float) $payload['prix_livraison'] : 0.0;
         $pretMateriel = isset($payload['pret_materiel']) ? (bool) $payload['pret_materiel'] : false;
         $restitutionMateriel = isset($payload['restitution_materiel']) ? (bool) $payload['restitution_materiel'] : false;
 
         $commande = new Commande();
+        $commande->setNumeroCommande('CMD' . strtoupper(substr(uniqid(), -6)));
         $commande->setDateCommande(new \DateTime());
         $commande->setDatePrestation($datePrestation);
         $commande->setHeureLivraison($heureLivraison);
@@ -95,7 +102,6 @@ final class CommandeController extends AbstractController
         $commande->setUtilisateur($user);
         $commande->addMenu($menu);
 
-        // On considère qu’une commande consomme 1 disponibilité de menu
         $menu->setQuantiteRestante($menu->getQuantiteRestante() - 1);
 
         $entityManager->persist($commande);
@@ -117,6 +123,37 @@ final class CommandeController extends AbstractController
             ['utilisateur' => $user],
             ['dateCommande' => 'DESC']
         );
+
+        $data = array_map(fn (Commande $commande) => $this->serializeCommande($commande), $commandes);
+
+        return $this->json($data);
+    }
+
+    #[Route('', name: 'api_commande_list', methods: ['GET'])]
+    public function list(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
+        }
+
+        if (!in_array('ROLE_EMPLOYE', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return $this->json(['message' => 'Accès interdit'], 403);
+        }
+
+        $statut = $request->query->get('statut');
+
+        if ($statut) {
+            $commandes = $entityManager
+                ->getRepository(Commande::class)
+                ->findBy(['statut' => $statut], ['dateCommande' => 'DESC']);
+        } else {
+            $commandes = $entityManager
+                ->getRepository(Commande::class)
+                ->findBy([], ['dateCommande' => 'DESC']);
+        }
 
         $data = array_map(fn (Commande $commande) => $this->serializeCommande($commande), $commandes);
 
@@ -167,9 +204,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Accès interdit'], 403);
         }
 
-        if ($commande->getStatut() === 'acceptee') {
+        if ($commande->getStatut() !== 'en_attente') {
             return $this->json([
-                'message' => 'La commande ne peut plus être modifiée une fois acceptée'
+                'message' => 'La commande ne peut plus être modifiée une fois prise en charge'
             ], 422);
         }
 
@@ -203,8 +240,15 @@ final class CommandeController extends AbstractController
                 ], 422);
             }
 
+            $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
+            $minimum = $menu->getNombrePersonneMinimum();
+
+            if ($nombrePersonnes >= $minimum + 5) {
+                $prixMenu = $prixMenu * 0.9;
+            }
+
             $commande->setNombrePersonnes($nombrePersonnes);
-            $commande->setPrixMenu($menu->getPrixParPersonne() * $nombrePersonnes);
+            $commande->setPrixMenu($prixMenu);
         }
 
         if (array_key_exists('date_prestation', $payload)) {
@@ -262,15 +306,15 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Accès interdit'], 403);
         }
 
-        if ($commande->getStatut() === 'acceptee') {
-            return $this->json([
-                'message' => 'La commande ne peut plus être annulée une fois acceptée'
-            ], 422);
-        }
-
         if ($commande->getStatut() === 'annulee') {
             return $this->json([
                 'message' => 'La commande est déjà annulée'
+            ], 422);
+        }
+
+        if ($commande->getStatut() !== 'en_attente') {
+            return $this->json([
+                'message' => 'La commande ne peut plus être annulée une fois prise en charge'
             ], 422);
         }
 
@@ -284,54 +328,6 @@ final class CommandeController extends AbstractController
         $entityManager->flush();
 
         return $this->json($this->serializeCommande($commande));
-    }
-
-    private function getCommandeMenu(Commande $commande): ?Menu
-    {
-        foreach ($commande->getMenu() as $menu) {
-            return $menu;
-        }
-
-        return null;
-    }
-
-    private function serializeCommande(Commande $commande): array
-    {
-        $menus = [];
-
-        foreach ($commande->getMenu() as $menu) {
-            $menus[] = [
-                'id' => $menu->getMenuId(),
-                'titre' => $menu->getTitre(),
-                'prix_par_personne' => $menu->getPrixParPersonne(),
-                'description' => $menu->getDescription(),
-                'image' => $menu->getImage(),
-            ];
-        }
-
-        return [
-            'numero_commande' => $commande->getNumeroCommande(),
-            'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
-            'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
-            'heure_livraison' => $commande->getHeureLivraison(),
-            'prix_menu' => $commande->getPrixMenu(),
-            'prix_livraison' => $commande->getPrixLivraison(),
-            'prix_total' => $commande->getPrixMenu() + $commande->getPrixLivraison(),
-            'nombre_personnes' => $commande->getNombrePersonnes(),
-            'statut' => $commande->getStatut(),
-            'motif_annulation' => $commande->getMotifAnnulation(),
-            'mode_contact_annulation' => $commande->getModeContactAnnulation(),
-            'pret_materiel' => $commande->isPretMateriel(),
-            'restitution_materiel' => $commande->isRestitutionMateriel(),
-            'utilisateur' => $commande->getUtilisateur() ? [
-                'id' => $commande->getUtilisateur()->getUtilisateurId(),
-                'name' => $commande->getUtilisateur()->getName(),
-                'firstname' => $commande->getUtilisateur()->getFirstname(),
-                'email' => $commande->getUtilisateur()->getEmail(),
-                'telephone' => $commande->getUtilisateur()->getTelephone(),
-            ] : null,
-            'menus' => $menus,
-        ];
     }
 
     #[Route('/employe/{id}/cancel', name: 'api_commande_employe_cancel', methods: ['PATCH'])]
@@ -392,5 +388,104 @@ final class CommandeController extends AbstractController
         $entityManager->flush();
 
         return $this->json($this->serializeCommande($commande));
+    }
+
+    #[Route('/employe/{id}/status', name: 'api_commande_employe_status', methods: ['PATCH'])]
+    public function updateStatus(
+        string $id,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
+        }
+
+        if (!in_array('ROLE_EMPLOYE', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return $this->json(['message' => 'Accès interdit'], 403);
+        }
+
+        $commande = $entityManager->getRepository(Commande::class)->find($id);
+
+        if (!$commande) {
+            return $this->json(['message' => 'Commande introuvable'], 404);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+
+        if (!is_array($payload)) {
+            return $this->json(['message' => 'JSON invalide'], 400);
+        }
+
+        if (!isset($payload['statut'])) {
+            return $this->json(['message' => 'Le statut est obligatoire'], 422);
+        }
+
+        $statutsAutorises = [
+            'acceptee',
+            'en_preparation',
+            'en_livraison',
+            'livree',
+            'retour_materiel',
+            'terminee'
+        ];
+
+        if (!in_array($payload['statut'], $statutsAutorises, true)) {
+            return $this->json(['message' => 'Statut invalide'], 422);
+        }
+
+        $commande->setStatut($payload['statut']);
+
+        $entityManager->flush();
+
+        return $this->json($this->serializeCommande($commande));
+    }
+
+    private function getCommandeMenu(Commande $commande): ?Menu
+    {
+        foreach ($commande->getMenu() as $menu) {
+            return $menu;
+        }
+
+        return null;
+    }
+
+    private function serializeCommande(Commande $commande): array
+    {
+        $menus = [];
+
+        foreach ($commande->getMenu() as $menu) {
+            $menus[] = [
+                'id' => $menu->getMenuId(),
+                'titre' => $menu->getTitre(),
+                'prix_par_personne' => $menu->getPrixParPersonne(),
+                'description' => $menu->getDescription(),
+                'image' => $menu->getImage(),
+            ];
+        }
+
+        return [
+            'numero_commande' => $commande->getNumeroCommande(),
+            'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
+            'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
+            'heure_livraison' => $commande->getHeureLivraison(),
+            'prix_menu' => $commande->getPrixMenu(),
+            'prix_livraison' => $commande->getPrixLivraison(),
+            'prix_total' => $commande->getPrixMenu() + $commande->getPrixLivraison(),
+            'nombre_personnes' => $commande->getNombrePersonnes(),
+            'statut' => $commande->getStatut(),
+            'motif_annulation' => $commande->getMotifAnnulation(),
+            'mode_contact_annulation' => $commande->getModeContactAnnulation(),
+            'pret_materiel' => $commande->isPretMateriel(),
+            'restitution_materiel' => $commande->isRestitutionMateriel(),
+            'utilisateur' => $commande->getUtilisateur() ? [
+                'id' => $commande->getUtilisateur()->getUtilisateurId(),
+                'name' => $commande->getUtilisateur()->getName(),
+                'firstname' => $commande->getUtilisateur()->getFirstname(),
+                'email' => $commande->getUtilisateur()->getEmail(),
+                'telephone' => $commande->getUtilisateur()->getTelephone(),
+            ] : null,
+            'menus' => $menus,
+        ];
     }
 }

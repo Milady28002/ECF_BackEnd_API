@@ -20,9 +20,7 @@ class Commande
      */
     #[ORM\Column(name: 'numero_commande', type: 'string', length: 50, nullable: false)]
     #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $numeroCommande;
-
+    private ?string $numeroCommande = null;
     /**
      * @var \DateTime
      */
@@ -110,6 +108,13 @@ class Commande
     public function getNumeroCommande(): ?string
     {
         return $this->numeroCommande;
+    }
+
+    public function setNumeroCommande(string $numeroCommande): static
+    {
+        $this->numeroCommande = $numeroCommande;
+
+        return $this;
     }
 
     public function getDateCommande(): ?\DateTimeInterface
