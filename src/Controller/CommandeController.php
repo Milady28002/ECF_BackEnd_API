@@ -160,7 +160,7 @@ final class CommandeController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/{id}', name: 'api_commande_show', methods: ['GET'])]
+    #[Route('/{id}', name: 'api_commande_show', methods: ['GET'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     public function show(
         string $id,
         EntityManagerInterface $entityManager,
@@ -183,7 +183,7 @@ final class CommandeController extends AbstractController
         return $this->json($this->serializeCommande($commande));
     }
 
-    #[Route('/{id}', name: 'api_commande_update', methods: ['PATCH'])]
+    #[Route('/{id}', name: 'api_commande_update', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     public function update(
         string $id,
         Request $request,
@@ -286,7 +286,7 @@ final class CommandeController extends AbstractController
         return $this->json($this->serializeCommande($commande));
     }
 
-    #[Route('/{id}/cancel', name: 'api_commande_cancel', methods: ['PATCH'])]
+    #[Route('/{id}/cancel', name: 'api_commande_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     public function cancel(
         string $id,
         EntityManagerInterface $entityManager,
@@ -330,7 +330,7 @@ final class CommandeController extends AbstractController
         return $this->json($this->serializeCommande($commande));
     }
 
-    #[Route('/employe/{id}/cancel', name: 'api_commande_employe_cancel', methods: ['PATCH'])]
+    #[Route('/employe/{id}/cancel', name: 'api_commande_employe_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     public function employeeCancel(
         string $id,
         Request $request,
@@ -390,7 +390,7 @@ final class CommandeController extends AbstractController
         return $this->json($this->serializeCommande($commande));
     }
 
-    #[Route('/employe/{id}/status', name: 'api_commande_employe_status', methods: ['PATCH'])]
+    #[Route('/employe/{id}/status', name: 'api_commande_employe_status', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     public function updateStatus(
         string $id,
         Request $request,
@@ -487,5 +487,37 @@ final class CommandeController extends AbstractController
             ] : null,
             'menus' => $menus,
         ];
+    }
+
+   #[Route('/mes-commandes', name: 'api_mes_commandes', methods: ['GET'])]
+    public function mesCommandes(
+        EntityManagerInterface $em,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+
+        if (!$user) {
+            return $this->json([
+                'message' => 'Utilisateur non authentifié'
+            ], 401);
+        }
+
+        $commandes = $em->getRepository(Commande::class)
+            ->findBy(['utilisateur' => $user]);
+
+        $data = [];
+
+        foreach ($commandes as $commande) {
+            $data[] = [
+                'numero_commande' => $commande->getNumeroCommande(),
+                'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
+                'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
+                'heure_livraison' => $commande->getHeureLivraison(),
+                'prix_total' => $commande->getPrixMenu() + $commande->getPrixLivraison(),
+                'nombre_personnes' => $commande->getNombrePersonnes(),
+                'statut' => $commande->getStatut()
+            ];
+        }
+
+        return $this->json($data);
     }
 }
