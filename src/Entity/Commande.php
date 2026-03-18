@@ -39,6 +39,9 @@ class Commande
     #[ORM\Column(name: 'heure_livraison', type: 'string', length: 50, nullable: false)]
     private $heureLivraison;
 
+    #[ORM\Column(name: 'adresse_livraison', type: 'string', length: 255, nullable: false)]
+    private ?string $adresseLivraison = null;
+
     /**
      * @var float
      */
@@ -153,9 +156,21 @@ class Commande
         return $this;
     }
 
+    public function getAdresseLivraison(): ?string
+    {
+        return $this->adresseLivraison;
+    }
+
+    public function setAdresseLivraison(string $adresseLivraison): static
+    {
+    $this->adresseLivraison = $adresseLivraison;
+
+    return $this;
+    }
+
     public function getPrixMenu(): ?float
     {
-        return $this->prixMenu;
+    return $this->prixMenu;
     }
 
     public function setPrixMenu(float $prixMenu): static

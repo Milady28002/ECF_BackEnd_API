@@ -36,6 +36,7 @@ final class CommandeController extends AbstractController
             'nombre_personnes',
             'date_prestation',
             'heure_livraison',
+            'adresse_livraison',
         ];
 
         foreach ($requiredFields as $field) {
@@ -77,6 +78,12 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'heure_livraison est obligatoire'], 422);
         }
 
+        $adresseLivraison = trim((string) $payload['adresse_livraison']);
+
+        if ($adresseLivraison === '') {
+            return $this->json(['message' => 'adresse_livraison est obligatoire'], 422);
+        }
+
         $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
         $minimum = $menu->getNombrePersonneMinimum();
 
@@ -93,6 +100,7 @@ final class CommandeController extends AbstractController
         $commande->setDateCommande(new \DateTime());
         $commande->setDatePrestation($datePrestation);
         $commande->setHeureLivraison($heureLivraison);
+        $commande->setAdresseLivraison($adresseLivraison);
         $commande->setPrixMenu($prixMenu);
         $commande->setPrixLivraison($prixLivraison);
         $commande->setNombrePersonnes($nombrePersonnes);
@@ -124,7 +132,10 @@ final class CommandeController extends AbstractController
             ['dateCommande' => 'DESC']
         );
 
-        $data = array_map(fn (Commande $commande) => $this->serializeCommande($commande), $commandes);
+        $data = array_map
+            (fn (Commande $commande) => $this->serializeCommande($commande),
+            $commandes
+        );
 
         return $this->json($data);
     }
@@ -170,7 +181,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
-        $commande = $entityManager->getRepository(Commande::class)->find($id);
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
         if (!$commande) {
             return $this->json(['message' => 'Commande introuvable'], 404);
@@ -194,7 +207,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
-        $commande = $entityManager->getRepository(Commande::class)->find($id);
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
         if (!$commande) {
             return $this->json(['message' => 'Commande introuvable'], 404);
@@ -269,6 +284,16 @@ final class CommandeController extends AbstractController
             $commande->setHeureLivraison($heureLivraison);
         }
 
+        if (array_key_exists('adresse_livraison', $payload)) {
+            $adresseLivraison = trim((string) $payload['adresse_livraison']);
+
+            if ($adresseLivraison === '') {
+                return $this->json(['message' => 'adresse_livraison invalide'], 422);
+            }
+
+            $commande->setAdresseLivraison($adresseLivraison);
+        }
+
         if (array_key_exists('prix_livraison', $payload)) {
             $commande->setPrixLivraison((float) $payload['prix_livraison']);
         }
@@ -296,7 +321,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
-        $commande = $entityManager->getRepository(Commande::class)->find($id);
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
         if (!$commande) {
             return $this->json(['message' => 'Commande introuvable'], 404);
@@ -345,7 +372,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Accès interdit'], 403);
         }
 
-        $commande = $entityManager->getRepository(Commande::class)->find($id);
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
         if (!$commande) {
             return $this->json(['message' => 'Commande introuvable'], 404);
@@ -405,7 +434,9 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Accès interdit'], 403);
         }
 
-        $commande = $entityManager->getRepository(Commande::class)->find($id);
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
         if (!$commande) {
             return $this->json(['message' => 'Commande introuvable'], 404);
@@ -421,17 +452,26 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Le statut est obligatoire'], 422);
         }
 
-        $statutsAutorises = [
-            'acceptee',
-            'en_preparation',
-            'en_livraison',
-            'livree',
-            'retour_materiel',
-            'terminee'
+        $transitionsAutorisees = [
+            'en_attente' => ['acceptee', 'annulee'],
+            'acceptee' => ['en_preparation', 'annulee'],
+            'en_preparation' => ['en_livraison', 'annulee'],
+            'en_livraison' => ['livree'],
+            'livree' => ['retour_materiel', 'terminee'],
+            'retour_materiel' => ['terminee'],
+            'terminee' => [],
+            'annulee' => [],
         ];
 
-        if (!in_array($payload['statut'], $statutsAutorises, true)) {
-            return $this->json(['message' => 'Statut invalide'], 422);
+        $statutActuel = $commande->getStatut();
+        $nouveauStatut = $payload['statut'];
+
+        if (!isset($transitionsAutorisees[$statutActuel])) {
+            return $this->json(['message' => 'Statut actuel invalide'], 422);
+        }
+
+        if (!in_array($nouveauStatut, $transitionsAutorisees[$statutActuel], true)) {
+            return $this->json(['message' => 'Transition de statut non autorisée'], 422);
         }
 
         $commande->setStatut($payload['statut']);
@@ -469,6 +509,7 @@ final class CommandeController extends AbstractController
             'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
             'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
             'heure_livraison' => $commande->getHeureLivraison(),
+            'adresse_livraison' => $commande->getAdresseLivraison(),
             'prix_menu' => $commande->getPrixMenu(),
             'prix_livraison' => $commande->getPrixLivraison(),
             'prix_total' => $commande->getPrixMenu() + $commande->getPrixLivraison(),
@@ -489,35 +530,4 @@ final class CommandeController extends AbstractController
         ];
     }
 
-   #[Route('/mes-commandes', name: 'api_mes_commandes', methods: ['GET'])]
-    public function mesCommandes(
-        EntityManagerInterface $em,
-        #[CurrentUser] ?Utilisateur $user
-    ): JsonResponse {
-
-        if (!$user) {
-            return $this->json([
-                'message' => 'Utilisateur non authentifié'
-            ], 401);
-        }
-
-        $commandes = $em->getRepository(Commande::class)
-            ->findBy(['utilisateur' => $user]);
-
-        $data = [];
-
-        foreach ($commandes as $commande) {
-            $data[] = [
-                'numero_commande' => $commande->getNumeroCommande(),
-                'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
-                'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
-                'heure_livraison' => $commande->getHeureLivraison(),
-                'prix_total' => $commande->getPrixMenu() + $commande->getPrixLivraison(),
-                'nombre_personnes' => $commande->getNombrePersonnes(),
-                'statut' => $commande->getStatut()
-            ];
-        }
-
-        return $this->json($data);
-    }
 }
