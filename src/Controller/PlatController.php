@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/plats')]
 final class PlatController extends AbstractController
@@ -18,7 +19,6 @@ final class PlatController extends AbstractController
     {
         $plats = $repo->findAll();
 
-        // On renvoie un JSON "safe" (évite les soucis de relations/circular refs)
         $data = array_map([$this, 'toArray'], $plats);
 
         return $this->json($data);
@@ -28,6 +28,7 @@ final class PlatController extends AbstractController
     public function getOne(int $id, PlatRepository $repo): JsonResponse
     {
         $plat = $repo->find($id);
+
         if (!$plat) {
             return $this->json(['message' => 'Plat introuvable'], 404);
         }
@@ -36,6 +37,7 @@ final class PlatController extends AbstractController
     }
 
     #[Route('', name: 'api_plat_create', methods: ['POST'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $payload = json_decode($request->getContent(), true);
@@ -44,27 +46,26 @@ final class PlatController extends AbstractController
             return $this->json(['message' => 'JSON invalide'], 400);
         }
 
-        $titre = $payload['titrePlat'] ?? null;
+        $titre = $payload['titre_plat'] ?? $payload['titrePlat'] ?? $payload['titre'] ?? null;
+        $typePlat = $payload['type_plat'] ?? null;
+        $imageUrl = $payload['image_url'] ?? null;
 
         if (!$titre || !is_string($titre) || mb_strlen(trim($titre)) < 1) {
             return $this->json(['message' => 'Le titre du plat est obligatoire'], 422);
         }
 
-        $plat = new Plat();
-
-        $plat->setTitrePlat(trim($titre));
-
-        // photo optionnelle (base64) : "photo_base64"
-        // Si tu n’en as pas besoin maintenant, tu peux ignorer cette partie.
-        $photoBase64 = $payload['photo_base64'] ?? null;
-        if (is_string($photoBase64) && $photoBase64 !== '') {
-            $binary = base64_decode($photoBase64, true);
-            if ($binary === false) {
-                return $this->json(['message' => 'photo_base64 invalide (base64 attendu)'], 422);
-            }
-            // Adapte si ton champ photo est string/blob etc.
-            $plat->setPhoto($binary);
+        if ($typePlat === null || !in_array((string) $typePlat, ['1', '2', '3'], true)) {
+            return $this->json(['message' => 'Le type de plat doit être 1 (entrée), 2 (plat) ou 3 (dessert)'], 422);
         }
+
+        if ($imageUrl !== null && $imageUrl !== '' && !is_string($imageUrl)) {
+            return $this->json(['message' => 'image_url doit être une chaîne de caractères ou null'], 422);
+        }
+
+        $plat = new Plat();
+        $plat->setTitrePlat(trim($titre));
+        $plat->setTypePlat((string) $typePlat);
+        $plat->setImageUrl(is_string($imageUrl) && trim($imageUrl) !== '' ? trim($imageUrl) : null);
 
         $em->persist($plat);
         $em->flush();
@@ -73,39 +74,49 @@ final class PlatController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_plat_update', requirements: ['id' => '\d+'], methods: ['PUT', 'PATCH'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function update(int $id, Request $request, PlatRepository $repo, EntityManagerInterface $em): JsonResponse
     {
         $plat = $repo->find($id);
+
         if (!$plat) {
             return $this->json(['message' => 'Plat introuvable'], 404);
         }
 
         $payload = json_decode($request->getContent(), true);
+
         if (!is_array($payload)) {
             return $this->json(['message' => 'JSON invalide'], 400);
         }
 
         if (array_key_exists('titre_plat', $payload) || array_key_exists('titrePlat', $payload) || array_key_exists('titre', $payload)) {
             $titre = $payload['titre_plat'] ?? $payload['titrePlat'] ?? $payload['titre'] ?? null;
+
             if (!$titre || !is_string($titre) || mb_strlen(trim($titre)) < 1) {
                 return $this->json(['message' => 'Le titre du plat est obligatoire'], 422);
             }
+
             $plat->setTitrePlat(trim($titre));
         }
 
-        if (array_key_exists('photo_base64', $payload)) {
-            $photoBase64 = $payload['photo_base64'];
-            if ($photoBase64 === null || $photoBase64 === '') {
-                $plat->setPhoto(null);
-            } elseif (is_string($photoBase64)) {
-                $binary = base64_decode($photoBase64, true);
-                if ($binary === false) {
-                    return $this->json(['message' => 'photo_base64 invalide (base64 attendu)'], 422);
-                }
-                $plat->setPhoto($binary);
-            } else {
-                return $this->json(['message' => 'photo_base64 doit être une string ou null'], 422);
+        if (array_key_exists('type_plat', $payload)) {
+            $typePlat = $payload['type_plat'];
+
+            if ($typePlat === null || !in_array((string) $typePlat, ['1', '2', '3'], true)) {
+                return $this->json(['message' => 'Le type de plat doit être 1 (entrée), 2 (plat) ou 3 (dessert)'], 422);
             }
+
+            $plat->setTypePlat((string) $typePlat);
+        }
+
+        if (array_key_exists('image_url', $payload)) {
+            $imageUrl = $payload['image_url'];
+
+            if ($imageUrl !== null && $imageUrl !== '' && !is_string($imageUrl)) {
+                return $this->json(['message' => 'image_url doit être une chaîne de caractères ou null'], 422);
+            }
+
+            $plat->setImageUrl(is_string($imageUrl) && trim($imageUrl) !== '' ? trim($imageUrl) : null);
         }
 
         $em->flush();
@@ -114,9 +125,11 @@ final class PlatController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_plat_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(int $id, PlatRepository $repo, EntityManagerInterface $em): JsonResponse
     {
         $plat = $repo->find($id);
+
         if (!$plat) {
             return $this->json(['message' => 'Plat introuvable'], 404);
         }
@@ -129,20 +142,11 @@ final class PlatController extends AbstractController
 
     private function toArray(Plat $plat): array
     {
-        $id = $plat->getPlatId();
-        $titre = $plat->getTitrePlat();
-
-        // Photo: pour éviter d’envoyer un blob énorme, on renvoie juste un booléen
-        $hasPhoto = false;
-        if (method_exists($plat, 'getPhoto')) {
-            $p = $plat->getPhoto();
-            $hasPhoto = $p !== null && $p !== '';
-        }
-
         return [
-            'id' => $id,
-            'titre_plat' => $titre,
-            'has_photo' => $hasPhoto,
+            'id' => $plat->getPlatId(),
+            'titre_plat' => $plat->getTitrePlat(),
+            'type_plat' => $plat->getTypePlat(),
+            'image_url' => $plat->getImageUrl(),
         ];
     }
 }

@@ -12,16 +12,23 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/menus')]
 final class MenuController extends AbstractController
 {
     #[Route('', name: 'api_menu_list', methods: ['GET'])]
-    public function list(MenuRepository $menuRepository): JsonResponse
+    public function list(Request $request, MenuRepository $menuRepository): JsonResponse
     {
-        $menus = $menuRepository->findAll();
+        $prixMin = $request->query->get('prixMin') !== null ? (float) $request->query->get('prixMin') : null;
+        $prixMax = $request->query->get('prixMax') !== null ? (float) $request->query->get('prixMax') : null;
+        $theme = $request->query->get('theme');
+        $regime = $request->query->get('regime');
+        $personnesMin = $request->query->get('personnesMin') !== null ? (int) $request->query->get('personnesMin') : null;
 
-        $data = array_map(fn (Menu $menu) => $this->serializeMenu($menu), $menus);
+        $menus = $menuRepository->findByFilters($prixMin, $prixMax, $theme, $regime, $personnesMin);
+
+        $data = array_map(fn(Menu $menu) => $this->serializeMenu($menu), $menus);
 
         return $this->json($data);
     }
@@ -39,6 +46,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('', name: 'api_menu_create', methods: ['POST'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function create(
         Request $request,
         EntityManagerInterface $entityManager
@@ -72,6 +80,8 @@ final class MenuController extends AbstractController
         $menu->setQuantiteRestante((int) $payload['quantite_restante']);
         $menu->setRegime($regime);
         $menu->setTheme($theme);
+        $menu->setImage($payload['image'] ?? null);
+        $menu->setConditionsMenu($payload['conditions_menu'] ?? null);
 
         foreach ($payload['plats'] as $platId) {
             $plat = $entityManager->getRepository(Plat::class)->find($platId);
@@ -90,6 +100,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_menu_update', requirements: ['id' => '\d+'], methods: ['PUT', 'PATCH'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function update(
         int $id,
         Request $request,
@@ -130,6 +141,8 @@ final class MenuController extends AbstractController
         $menu->setQuantiteRestante((int) $payload['quantite_restante']);
         $menu->setRegime($regime);
         $menu->setTheme($theme);
+        $menu->setImage($payload['image'] ?? null);
+        $menu->setConditionsMenu($payload['conditions_menu'] ?? null);
 
         foreach ($menu->getPlat()->toArray() as $plat) {
             $menu->removePlat($plat);
@@ -151,6 +164,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_menu_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(
         int $id,
         MenuRepository $menuRepository,
@@ -166,6 +180,62 @@ final class MenuController extends AbstractController
         $entityManager->flush();
 
         return $this->json(null, 204);
+    }
+
+    private function serializeMenu(Menu $menu): array
+    {
+        $plats = [];
+
+        foreach ($menu->getPlat() as $plat) {
+            $allergenes = [];
+
+            foreach ($plat->getAllergene() as $allergene) {
+                $allergenes[] = [
+                    'id' => $allergene->getAllergeneId(),
+                    'libelle' => $allergene->getLibelle(),
+                ];
+            }
+
+            $typePlat = (int) $plat->getTypePlat();
+
+            $typePlatLabel = match ($typePlat) {
+                1 => 'Entrée',
+                2 => 'Plat',
+                3 => 'Dessert',
+                default => 'Non renseigné',
+            };
+
+            $plats[] = [
+                'id' => $plat->getPlatId(),
+                'titre' => $plat->getTitrePlat(),
+                'type_plat' => $typePlat,
+                'type_plat_label' => $typePlatLabel,
+                'image_url' => $plat->getImageUrl(),
+                'allergenes' => $allergenes,
+            ];
+        }
+
+        usort($plats, fn(array $a, array $b) => $a['type_plat'] <=> $b['type_plat']);
+
+        return [
+            'id' => $menu->getMenuId(),
+            'titre' => $menu->getTitre(),
+            'nombre_personne_minimum' => $menu->getNombrePersonneMinimum(),
+            'prix_par_personne' => $menu->getPrixParPersonne(),
+            'description' => $menu->getDescription(),
+            'image' => $menu->getImage(),
+            'conditions_menu' => $menu->getConditionsMenu(),
+            'quantite_restante' => $menu->getQuantiteRestante(),
+            'regime' => $menu->getRegime() ? [
+                'id' => $menu->getRegime()->getRegimeId(),
+                'libelle' => $menu->getRegime()->getLibelle(),
+            ] : null,
+            'theme' => $menu->getTheme() ? [
+                'id' => $menu->getTheme()->getThemeId(),
+                'libelle' => $menu->getTheme()->getLibelle(),
+            ] : null,
+            'plats' => $plats,
+        ];
     }
 
     private function validatePayload(array $payload): ?string
@@ -219,36 +289,10 @@ final class MenuController extends AbstractController
             return 'Le champ plats doit être un tableau d’identifiants';
         }
 
-        return null;
-    }
-
-    private function serializeMenu(Menu $menu): array
-    {
-        $plats = [];
-
-        foreach ($menu->getPlat() as $plat) {
-            $plats[] = [
-                'id' => $plat->getPlatId(),
-                'titre' => $plat->getTitrePlat(),
-            ];
+        if (empty($payload['plats'])) {
+            return 'Le menu doit contenir au moins un plat';
         }
 
-        return [
-            'id' => $menu->getMenuId(),
-            'titre' => $menu->getTitre(),
-            'nombre_personne_minimum' => $menu->getNombrePersonneMinimum(),
-            'prix_par_personne' => $menu->getPrixParPersonne(),
-            'description' => $menu->getDescription(),
-            'quantite_restante' => $menu->getQuantiteRestante(),
-            'regime' => $menu->getRegime() ? [
-                'id' => $menu->getRegime()->getRegimeId(),
-                'libelle' => $menu->getRegime()->getLibelle(),
-            ] : null,
-            'theme' => $menu->getTheme() ? [
-                'id' => $menu->getTheme()->getThemeId(),
-                'libelle' => $menu->getTheme()->getLibelle(),
-            ] : null,
-            'plats' => $plats,
-        ];
+        return null;
     }
 }

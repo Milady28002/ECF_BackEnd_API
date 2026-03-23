@@ -20,9 +20,7 @@ class Commande
      */
     #[ORM\Column(name: 'numero_commande', type: 'string', length: 50, nullable: false)]
     #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $numeroCommande;
-
+    private ?string $numeroCommande = null;
     /**
      * @var \DateTime
      */
@@ -40,6 +38,9 @@ class Commande
      */
     #[ORM\Column(name: 'heure_livraison', type: 'string', length: 50, nullable: false)]
     private $heureLivraison;
+
+    #[ORM\Column(name: 'adresse_livraison', type: 'string', length: 255, nullable: false)]
+    private ?string $adresseLivraison = null;
 
     /**
      * @var float
@@ -64,6 +65,12 @@ class Commande
      */
     #[ORM\Column(name: 'statut', type: 'string', length: 50, nullable: false)]
     private $statut;
+
+    #[ORM\Column(name: 'motif_annulation', type: 'text', nullable: true)]
+    private ?string $motifAnnulation = null;
+
+    #[ORM\Column(name: 'mode_contact_annulation', type: 'string', length: 50, nullable: true)]
+    private ?string $modeContactAnnulation = null;
 
     /**
      * @var bool
@@ -94,16 +101,30 @@ class Commande
     private $menu = array();
 
     /**
+     * @var Collection<int, CommandeStatutHistorique>
+     */
+    #[ORM\OneToMany(targetEntity: CommandeStatutHistorique::class, mappedBy: 'commande')]
+    private Collection $historiquesStatut;
+
+    /**
      * Constructor
      */
     public function __construct()
     {
         $this->menu = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->historiquesStatut = new ArrayCollection();
     }
 
     public function getNumeroCommande(): ?string
     {
         return $this->numeroCommande;
+    }
+
+    public function setNumeroCommande(string $numeroCommande): static
+    {
+        $this->numeroCommande = $numeroCommande;
+
+        return $this;
     }
 
     public function getDateCommande(): ?\DateTimeInterface
@@ -142,9 +163,21 @@ class Commande
         return $this;
     }
 
+    public function getAdresseLivraison(): ?string
+    {
+        return $this->adresseLivraison;
+    }
+
+    public function setAdresseLivraison(string $adresseLivraison): static
+    {
+    $this->adresseLivraison = $adresseLivraison;
+
+    return $this;
+    }
+
     public function getPrixMenu(): ?float
     {
-        return $this->prixMenu;
+    return $this->prixMenu;
     }
 
     public function setPrixMenu(float $prixMenu): static
@@ -186,6 +219,30 @@ class Commande
     public function setStatut(string $statut): static
     {
         $this->statut = $statut;
+
+        return $this;
+    }
+
+    public function getMotifAnnulation(): ?string
+    {
+        return $this->motifAnnulation;
+    }
+
+    public function setMotifAnnulation(?string $motifAnnulation): static
+    {
+        $this->motifAnnulation = $motifAnnulation;
+
+        return $this;
+    }
+
+    public function getModeContactAnnulation(): ?string
+    {
+        return $this->modeContactAnnulation;
+    }
+
+    public function setModeContactAnnulation(?string $modeContactAnnulation): static
+    {
+        $this->modeContactAnnulation = $modeContactAnnulation;
 
         return $this;
     }
@@ -249,5 +306,31 @@ class Commande
 
         return $this;
     }
+
+    /**
+     * @return Collection<int, CommandeStatutHistorique>
+     */
+    public function getHistoriquesStatut(): Collection
+    {
+        return $this->historiquesStatut;
+    }
+
+    public function addHistoriquesStatut(CommandeStatutHistorique $historiquesStatut): static
+    {
+        if (!$this->historiquesStatut->contains($historiquesStatut)) {
+            $this->historiquesStatut->add($historiquesStatut);
+            $historiquesStatut->setCommande($this);
+        }
+
+        return $this;
+    }
+
+    public function removeHistoriquesStatut(CommandeStatutHistorique $historiquesStatut): static
+    {
+        $this->historiquesStatut->removeElement($historiquesStatut);
+
+        return $this;
+    }
+
 
 }

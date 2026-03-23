@@ -12,16 +12,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\Serializer\SerializerInterface;
-
 
 #[Route('/api', name: 'app_api_')]
 class SecurityController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $manager,
-        private SerializerInterface $serializer,
         private UserPasswordHasherInterface $passwordHasher,
     ) {
     }
@@ -29,40 +25,7 @@ class SecurityController extends AbstractController
     #[Route('/registration', name: 'registration', methods: ['POST'])]
     #[OA\Post(
         path: '/api/registration',
-        summary: "Inscription d'un utilisateur",
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                properties: [
-                    new OA\Property(property: 'firstName', type: 'string', example: 'Sylvie'),
-                    new OA\Property(property: 'lastName', type: 'string', example: 'Martin'),
-                    new OA\Property(property: 'email', type: 'string', example: 'sylvie@mail.fr'),
-                    new OA\Property(property: 'password', type: 'string', example: 'Test123!'),
-                    new OA\Property(property: 'telephone', type: 'string', example: '0600000000')
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 201,
-                description: "Utilisateur inscrit",
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'user', type: 'string'),
-                        new OA\Property(property: 'apiToken', type: 'string'),
-                        new OA\Property(
-                            property: 'roles',
-                            type: 'array',
-                            items: new OA\Items(type: 'string')
-                        )
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 409,
-                description: "Email déjà utilisé"
-            )
-        ]
+        summary: "Inscription d'un utilisateur"
     )]
     public function register(Request $request): JsonResponse
     {
@@ -121,37 +84,7 @@ class SecurityController extends AbstractController
     #[Route('/login', name: 'login', methods: ['POST'])]
     #[OA\Post(
         path: '/api/login',
-        summary: "Connexion d'un utilisateur",
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                properties: [
-                    new OA\Property(property: 'username', type: 'string', example: 'sylvie@mail.fr'),
-                    new OA\Property(property: 'password', type: 'string', example: 'Test123!')
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: "Connexion reussie",
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'user', type: 'string'),
-                        new OA\Property(property: 'apiToken', type: 'string'),
-                        new OA\Property(
-                            property: 'roles',
-                            type: 'array',
-                            items: new OA\Items(type: 'string')
-                        )
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: "Identifiants invalides"
-            )
-        ]
+        summary: "Connexion d'un utilisateur"
     )]
     public function login(#[CurrentUser] ?Utilisateur $user): JsonResponse
     {
@@ -174,65 +107,21 @@ class SecurityController extends AbstractController
         ]);
     }
 
-    #[Route('/account/me', name: 'me', methods: ['GET'])]
-    #[OA\Get(
-        path: '/api/account/me',
-        summary: "Recuperer les informations du compte",
-        security: [
-            ["ApiToken" => []]
-        ],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: "Informations utilisateur"
-            )
-        ]
-    )]
+    #[Route('/account', name: 'account', methods: ['GET'])]
+        public function account(#[CurrentUser] ?Utilisateur $utilisateur): JsonResponse
+        {
+            if (!$utilisateur) {
+                return $this->json([
+                    'message' => 'Utilisateur non authentifié'
+                ], Response::HTTP_UNAUTHORIZED);
+            }
 
-    public function me(): JsonResponse
-    {
-        $user = $this->getUser();
-        $responseData = $this->serializer->serialize($user, 'json');
-
-        return new JsonResponse($responseData, Response::HTTP_OK, [], true);
-    }
-
-    #[Route('/account/edit', name: 'edit', methods: ['PUT'])]
-    #[OA\Put(
-        path: '/api/account/edit',
-        summary: "Modifier son compte utilisateur",
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                properties: [
-                    new OA\Property(property: 'firstName', type: 'string', example: 'Nouveau prenom')
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 204,
-                description: "Utilisateur modifie avec succes"
-            )
-        ]
-    )]
-    public function edit(Request $request): JsonResponse
-    {
-        $user = $this->serializer->deserialize(
-            $request->getContent(),
-            Utilisateur::class,
-            'json',
-            [AbstractNormalizer::OBJECT_TO_POPULATE => $this->getUser()],
-        );
-
-        if (isset($request->toArray()['password'])) {
-            $user->setPassword(
-                $this->passwordHasher->hashPassword($user, $user->getPassword())
-            );
+            return $this->json([
+                'id' => $utilisateur->getId(),
+                'nom' => $utilisateur->getNom(),
+                'prenom' => $utilisateur->getPrenom(),
+                'email' => $utilisateur->getEmail(),
+                'telephone' => $utilisateur->getTelephone(),
+            ]);
         }
-
-        $this->manager->flush();
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
 }
