@@ -12,6 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/menus')]
 final class MenuController extends AbstractController
@@ -45,6 +46,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('', name: 'api_menu_create', methods: ['POST'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function create(
         Request $request,
         EntityManagerInterface $entityManager
@@ -97,7 +99,8 @@ final class MenuController extends AbstractController
         return $this->json($this->serializeMenu($menu), 201);
     }
 
-    #[Route('/{id}', name: 'api_menu_update', requirements: ['id' => '\d+'], methods: ['PUT','PATCH'])]
+    #[Route('/{id}', name: 'api_menu_update', requirements: ['id' => '\d+'], methods: ['PUT', 'PATCH'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function update(
         int $id,
         Request $request,
@@ -161,6 +164,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_menu_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(
         int $id,
         MenuRepository $menuRepository,
@@ -179,49 +183,61 @@ final class MenuController extends AbstractController
     }
 
     private function serializeMenu(Menu $menu): array
-{
-    $plats = [];
+    {
+        $plats = [];
 
-    foreach ($menu->getPlat() as $plat) {
-        $allergenes = [];
+        foreach ($menu->getPlat() as $plat) {
+            $allergenes = [];
 
-        foreach ($plat->getAllergene() as $allergene) {
-            $allergenes[] = [
-                'id' => $allergene->getAllergeneId(),
-                'libelle' => $allergene->getLibelle(),
+            foreach ($plat->getAllergene() as $allergene) {
+                $allergenes[] = [
+                    'id' => $allergene->getAllergeneId(),
+                    'libelle' => $allergene->getLibelle(),
+                ];
+            }
+
+            $typePlat = (int) $plat->getTypePlat();
+
+            $typePlatLabel = match ($typePlat) {
+                1 => 'Entrée',
+                2 => 'Plat',
+                3 => 'Dessert',
+                default => 'Non renseigné',
+            };
+
+            $plats[] = [
+                'id' => $plat->getPlatId(),
+                'titre' => $plat->getTitrePlat(),
+                'type_plat' => $typePlat,
+                'type_plat_label' => $typePlatLabel,
+                'image_url' => $plat->getImageUrl(),
+                'allergenes' => $allergenes,
             ];
         }
 
-        $plats[] = [
-            'id' => $plat->getPlatId(),
-            'titre' => $plat->getTitrePlat(),
-            'type_plat' => $plat->getTypePlat(),
-            'allergenes' => $allergenes,
+        usort($plats, fn(array $a, array $b) => $a['type_plat'] <=> $b['type_plat']);
+
+        return [
+            'id' => $menu->getMenuId(),
+            'titre' => $menu->getTitre(),
+            'nombre_personne_minimum' => $menu->getNombrePersonneMinimum(),
+            'prix_par_personne' => $menu->getPrixParPersonne(),
+            'description' => $menu->getDescription(),
+            'image' => $menu->getImage(),
+            'conditions_menu' => $menu->getConditionsMenu(),
+            'quantite_restante' => $menu->getQuantiteRestante(),
+            'regime' => $menu->getRegime() ? [
+                'id' => $menu->getRegime()->getRegimeId(),
+                'libelle' => $menu->getRegime()->getLibelle(),
+            ] : null,
+            'theme' => $menu->getTheme() ? [
+                'id' => $menu->getTheme()->getThemeId(),
+                'libelle' => $menu->getTheme()->getLibelle(),
+            ] : null,
+            'plats' => $plats,
         ];
     }
 
-    return [
-        'id' => $menu->getMenuId(),
-        'titre' => $menu->getTitre(),
-        'nombre_personne_minimum' => $menu->getNombrePersonneMinimum(),
-        'prix_par_personne' => $menu->getPrixParPersonne(),
-        'description' => $menu->getDescription(),
-        'image' => $menu->getImage(),
-        'conditions_menu' => $menu->getConditionsMenu(),
-        'quantite_restante' => $menu->getQuantiteRestante(),
-        'regime' => $menu->getRegime() ? [
-            'id' => $menu->getRegime()->getRegimeId(),
-            'libelle' => $menu->getRegime()->getLibelle(),
-        ] : null,
-        'theme' => $menu->getTheme() ? [
-            'id' => $menu->getTheme()->getThemeId(),
-            'libelle' => $menu->getTheme()->getLibelle(),
-        ] : null,
-        'plats' => $plats,
-    ];
-}
-
-    
     private function validatePayload(array $payload): ?string
     {
         $requiredFields = [
@@ -245,11 +261,11 @@ final class MenuController extends AbstractController
             return 'Le titre est obligatoire';
         }
 
-        if (!is_numeric($payload['nombre_personne_minimum']) || (int)$payload['nombre_personne_minimum'] < 1) {
+        if (!is_numeric($payload['nombre_personne_minimum']) || (int) $payload['nombre_personne_minimum'] < 1) {
             return 'Le nombre minimum de personnes doit être un entier positif';
         }
 
-        if (!is_numeric($payload['prix_par_personne']) || (float)$payload['prix_par_personne'] < 0) {
+        if (!is_numeric($payload['prix_par_personne']) || (float) $payload['prix_par_personne'] < 0) {
             return 'Le prix par personne doit être un nombre positif';
         }
 
@@ -257,7 +273,7 @@ final class MenuController extends AbstractController
             return 'La description est obligatoire';
         }
 
-        if (!is_numeric($payload['quantite_restante']) || (int)$payload['quantite_restante'] < 0) {
+        if (!is_numeric($payload['quantite_restante']) || (int) $payload['quantite_restante'] < 0) {
             return 'La quantité restante doit être un entier positif ou nul';
         }
 
@@ -271,6 +287,10 @@ final class MenuController extends AbstractController
 
         if (!is_array($payload['plats'])) {
             return 'Le champ plats doit être un tableau d’identifiants';
+        }
+
+        if (empty($payload['plats'])) {
+            return 'Le menu doit contenir au moins un plat';
         }
 
         return null;

@@ -5,20 +5,26 @@ namespace App\Controller;
 use App\Entity\Commande;
 use App\Entity\Menu;
 use App\Entity\Utilisateur;
+use App\Entity\CommandeStatutHistorique;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 
 #[Route('/api/commandes')]
 final class CommandeController extends AbstractController
 {
     #[Route('', name: 'api_commande_create', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function create(
         Request $request,
         EntityManagerInterface $entityManager,
+        MailerInterface $mailer,
         #[CurrentUser] ?Utilisateur $user
     ): JsonResponse {
         if (!$user) {
@@ -84,6 +90,12 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'adresse_livraison est obligatoire'], 422);
         }
 
+        if (!$this->isValidAdresseLivraison($adresseLivraison)) {
+            return $this->json([
+                'message' => 'L’adresse de livraison doit contenir un numéro, une voie, un code postal et une ville.'
+            ], 422);
+        }
+
         $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
         $minimum = $menu->getNombrePersonneMinimum();
 
@@ -91,9 +103,11 @@ final class CommandeController extends AbstractController
             $prixMenu = $prixMenu * 0.9;
         }
 
-        $prixLivraison = isset($payload['prix_livraison']) ? (float) $payload['prix_livraison'] : 0.0;
         $pretMateriel = isset($payload['pret_materiel']) ? (bool) $payload['pret_materiel'] : false;
         $restitutionMateriel = isset($payload['restitution_materiel']) ? (bool) $payload['restitution_materiel'] : false;
+
+   
+        $prixLivraison = $this->calculatePrixLivraison($adresseLivraison);
 
         $commande = new Commande();
         $commande->setNumeroCommande('CMD' . strtoupper(substr(uniqid(), -6)));
@@ -112,35 +126,57 @@ final class CommandeController extends AbstractController
 
         $menu->setQuantiteRestante($menu->getQuantiteRestante() - 1);
 
+        $historique = new CommandeStatutHistorique();
+        $historique->setCommande($commande);
+        $historique->setAncienStatut('creation');
+        $historique->setNouveauStatut('en_attente');
+        $historique->setDateChangement(new \DateTimeImmutable());
+        $historique->setUtilisateur($user);
+
         $entityManager->persist($commande);
+        $entityManager->persist($historique);
         $entityManager->flush();
+
+            try {
+            $email = (new Email())
+                ->from('no-reply@vite-gourmand.fr')
+                ->to($user->getEmail())
+                ->subject('Confirmation de votre commande')
+                ->html(sprintf(
+    '
+                    <h1 style="color:#008cff;">Commande confirmée</h1>
+
+                    <p>Bonjour %s,</p>
+                    <p>Votre commande a bien été enregistrée.</p>
+
+                    <p><strong>Numéro :</strong> %s</p>
+                    <p><strong>Date :</strong> %s</p>
+                    <p><strong>Heure :</strong> %s</p>
+                    <p><strong>Adresse :</strong> %s</p>
+
+                    <p style="font-size:18px;">
+                        <strong>Total : %.2f €</strong>
+                    </p>
+
+                    <p>Merci pour votre confiance.</p>
+                    ',
+                    htmlspecialchars((string) $user->getFirstname()),
+                    htmlspecialchars((string) $commande->getNumeroCommande()),
+                    $commande->getDatePrestation()->format('d/m/Y'),
+                    $commande->getHeureLivraison(),
+                    htmlspecialchars((string) $commande->getAdresseLivraison()),
+                    $commande->getPrixMenu() + $commande->getPrixLivraison()
+                ));
+
+            $mailer->send($email);
+                } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
 
         return $this->json($this->serializeCommande($commande), 201);
     }
-
-    #[Route('/me', name: 'api_commande_my_list', methods: ['GET'])]
-    public function myOrders(
-        EntityManagerInterface $entityManager,
-        #[CurrentUser] ?Utilisateur $user
-    ): JsonResponse {
-        if (!$user) {
-            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-        }
-
-        $commandes = $entityManager->getRepository(Commande::class)->findBy(
-            ['utilisateur' => $user],
-            ['dateCommande' => 'DESC']
-        );
-
-        $data = array_map
-            (fn (Commande $commande) => $this->serializeCommande($commande),
-            $commandes
-        );
-
-        return $this->json($data);
-    }
-
     #[Route('', name: 'api_commande_list', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
     public function list(
         Request $request,
         EntityManagerInterface $entityManager,
@@ -150,28 +186,46 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
-        if (!in_array('ROLE_EMPLOYE', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $user->getRoles(), true)) {
-            return $this->json(['message' => 'Accès interdit'], 403);
-        }
-
         $statut = $request->query->get('statut');
+        $clientId = $request->query->get('client');
+
+        $qb = $entityManager
+            ->getRepository(Commande::class)
+            ->createQueryBuilder('c')
+            ->leftJoin('c.utilisateur', 'u')
+            ->addOrderBy('c.dateCommande', 'DESC');
+
+        if (
+            !$this->isGranted('ROLE_EMPLOYE')
+            && !$this->isGranted('ROLE_ADMIN')
+        ) {
+            $qb->andWhere('c.utilisateur = :user')
+            ->setParameter('user', $user);
+        }
 
         if ($statut) {
-            $commandes = $entityManager
-                ->getRepository(Commande::class)
-                ->findBy(['statut' => $statut], ['dateCommande' => 'DESC']);
-        } else {
-            $commandes = $entityManager
-                ->getRepository(Commande::class)
-                ->findBy([], ['dateCommande' => 'DESC']);
+            $qb->andWhere('c.statut = :statut')
+            ->setParameter('statut', $statut);
         }
 
-        $data = array_map(fn (Commande $commande) => $this->serializeCommande($commande), $commandes);
+        if ($clientId && ($this->isGranted('ROLE_EMPLOYE') || $this->isGranted('ROLE_ADMIN'))) {
+            $qb->andWhere('u.utilisateurId = :clientId')
+            ->setParameter('clientId', $clientId);
+        }
+
+        $commandes = $qb->getQuery()->getResult();
+
+        $data = array_map(
+            fn(Commande $commande) => $this->serializeCommande($commande),
+            $commandes
+        );
 
         return $this->json($data);
     }
 
+
     #[Route('/{id}', name: 'api_commande_show', methods: ['GET'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
     public function show(
         string $id,
         EntityManagerInterface $entityManager,
@@ -189,7 +243,10 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Commande introuvable'], 404);
         }
 
-        if ($commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()) {
+        if (
+            $commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()
+            && !$this->isGranted('ROLE_EMPLOYE')
+        ) {
             return $this->json(['message' => 'Accès interdit'], 403);
         }
 
@@ -197,6 +254,7 @@ final class CommandeController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_commande_update', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
     public function update(
         string $id,
         Request $request,
@@ -291,11 +349,14 @@ final class CommandeController extends AbstractController
                 return $this->json(['message' => 'adresse_livraison invalide'], 422);
             }
 
-            $commande->setAdresseLivraison($adresseLivraison);
-        }
+            if (!$this->isValidAdresseLivraison($adresseLivraison)) {
+                return $this->json([
+                    'message' => 'L’adresse de livraison doit contenir un numéro, une voie, un code postal et une ville.'
+                ], 422);
+            }
 
-        if (array_key_exists('prix_livraison', $payload)) {
-            $commande->setPrixLivraison((float) $payload['prix_livraison']);
+            $commande->setAdresseLivraison($adresseLivraison);
+            $commande->setPrixLivraison($this->calculatePrixLivraison($adresseLivraison));
         }
 
         if (array_key_exists('pret_materiel', $payload)) {
@@ -312,6 +373,7 @@ final class CommandeController extends AbstractController
     }
 
     #[Route('/{id}/cancel', name: 'api_commande_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
     public function cancel(
         string $id,
         EntityManagerInterface $entityManager,
@@ -358,6 +420,7 @@ final class CommandeController extends AbstractController
     }
 
     #[Route('/employe/{id}/cancel', name: 'api_commande_employe_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function employeeCancel(
         string $id,
         Request $request,
@@ -366,10 +429,6 @@ final class CommandeController extends AbstractController
     ): JsonResponse {
         if (!$user) {
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-        }
-
-        if (!in_array('ROLE_EMPLOYE', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $user->getRoles(), true)) {
-            return $this->json(['message' => 'Accès interdit'], 403);
         }
 
         $commande = $entityManager->getRepository(Commande::class)->findOneBy([
@@ -420,6 +479,7 @@ final class CommandeController extends AbstractController
     }
 
     #[Route('/employe/{id}/status', name: 'api_commande_employe_status', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function updateStatus(
         string $id,
         Request $request,
@@ -428,10 +488,6 @@ final class CommandeController extends AbstractController
     ): JsonResponse {
         if (!$user) {
             return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-        }
-
-        if (!in_array('ROLE_EMPLOYE', $user->getRoles(), true) && !in_array('ROLE_ADMIN', $user->getRoles(), true)) {
-            return $this->json(['message' => 'Accès interdit'], 403);
         }
 
         $commande = $entityManager->getRepository(Commande::class)->findOneBy([
@@ -474,8 +530,16 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'Transition de statut non autorisée'], 422);
         }
 
-        $commande->setStatut($payload['statut']);
+        $historique = new CommandeStatutHistorique();
+        $historique->setCommande($commande);
+        $historique->setAncienStatut($statutActuel);
+        $historique->setNouveauStatut($nouveauStatut);
+        $historique->setDateChangement(new \DateTimeImmutable());
+        $historique->setUtilisateur($user);
 
+        $commande->setStatut($nouveauStatut);
+
+        $entityManager->persist($historique);
         $entityManager->flush();
 
         return $this->json($this->serializeCommande($commande));
@@ -490,6 +554,44 @@ final class CommandeController extends AbstractController
         return null;
     }
 
+    
+
+        private function isValidAdresseLivraison(string $adresse): bool
+    {
+        $adresse = trim($adresse);
+
+        // Format attendu :
+        // 18 rue Pompon, 33600 Pessac
+        return (bool) preg_match('/^\d+\s+.+,\s*\d{5}\s+.+$/u', $adresse);
+    }
+
+    private function calculatePrixLivraison(string $adresseLivraison): float
+    {
+        $adresse = mb_strtolower(trim($adresseLivraison));
+
+        if (str_contains($adresse, 'bordeaux') || str_contains($adresse, '33000')) {
+            return 0.0;
+        }
+
+        $distanceKm = 10;
+
+        if (str_contains($adresse, 'merignac') || str_contains($adresse, '33700')) {
+            $distanceKm = 8;
+        } elseif (str_contains($adresse, 'pessac') || str_contains($adresse, '33600')) {
+            $distanceKm = 7;
+        } elseif (str_contains($adresse, 'talence') || str_contains($adresse, '33400')) {
+            $distanceKm = 6;
+        } elseif (str_contains($adresse, 'eysines') || str_contains($adresse, '33320')) {
+            $distanceKm = 9;
+        } elseif (str_contains($adresse, 'blanquefort') || str_contains($adresse, '33290')) {
+            $distanceKm = 12;
+        } elseif (str_contains($adresse, 'le bouscat') || str_contains($adresse, '33110')) {
+            $distanceKm = 5;
+        }
+
+        return 5 + ($distanceKm * 0.59);
+    }
+
     private function serializeCommande(Commande $commande): array
     {
         $menus = [];
@@ -501,6 +603,22 @@ final class CommandeController extends AbstractController
                 'prix_par_personne' => $menu->getPrixParPersonne(),
                 'description' => $menu->getDescription(),
                 'image' => $menu->getImage(),
+            ];
+        }
+        
+        $historiqueStatuts = [];
+
+        foreach ($commande->getHistoriquesStatut() as $historique) {
+            $historiqueStatuts[] = [
+                'ancien_statut' => $historique->getAncienStatut(),
+                'nouveau_statut' => $historique->getNouveauStatut(),
+                'date_changement' => $historique->getDateChangement()?->format('Y-m-d H:i:s'),
+                'utilisateur' => $historique->getUtilisateur() ? [
+                    'id' => $historique->getUtilisateur()->getUtilisateurId(),
+                    'name' => $historique->getUtilisateur()->getName(),
+                    'firstname' => $historique->getUtilisateur()->getFirstname(),
+                    'email' => $historique->getUtilisateur()->getEmail(),
+                ] : null,
             ];
         }
 
@@ -527,7 +645,7 @@ final class CommandeController extends AbstractController
                 'telephone' => $commande->getUtilisateur()->getTelephone(),
             ] : null,
             'menus' => $menus,
+            'historique_statuts' => $historiqueStatuts,
         ];
     }
-
 }

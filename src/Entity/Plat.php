@@ -2,70 +2,51 @@
 
 namespace App\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\PlatRepository;
 use App\Entity\Menu;
 use App\Entity\Allergene;
 
-/**
- * Plat
- */
 #[ORM\Table(name: 'plat')]
 #[ORM\Entity(repositoryClass: PlatRepository::class)]
 class Plat
 {
-
-    /**
-     * @var int
-     */
     #[ORM\Column(name: 'plat_id', type: 'integer', nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $platId;
+    private ?int $platId = null;
 
     #[ORM\Column(name: 'type_plat', type: 'string', length: 20)]
     private ?string $typePlat = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'titre_plat', type: 'string', length: 50, nullable: false)]
-    private $titrePlat;
+    private ?string $titrePlat = null;
 
-    /**
-     * @var string|null
-     */
-    #[ORM\Column(name: 'photo', type: 'blob', length: 65535, nullable: true, options: ['default' => null])]
-    private $photo = null;
+    #[ORM\Column(name: 'image_url', type: 'string', length: 255, nullable: true)]
+    private ?string $imageUrl = null;
 
-    /**
-     * @var \Doctrine\Common\Collections\Collection
-     */
     #[ORM\ManyToMany(targetEntity: Menu::class, mappedBy: 'plat')]
-    private $menu = array();
+    private Collection $menu;
 
-    /**
-     * @var \Doctrine\Common\Collections\Collection
-     */
     #[ORM\JoinTable(name: 'plat_allergene')]
     #[ORM\JoinColumn(name: 'plat_id', referencedColumnName: 'plat_id')]
     #[ORM\InverseJoinColumn(name: 'allergene_id', referencedColumnName: 'allergene_id')]
     #[ORM\ManyToMany(targetEntity: Allergene::class, inversedBy: 'plat')]
-    private $allergene = array();
+    private Collection $allergene;
 
-    /**
-     * Constructor
-     */
     public function __construct()
     {
         $this->menu = new \Doctrine\Common\Collections\ArrayCollection();
         $this->allergene = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
-     public function getTypePlat(): ?string
+    public function getPlatId(): ?int
+    {
+        return $this->platId;
+    }
+
+    public function getTypePlat(): ?string
     {
         return $this->typePlat;
     }
@@ -76,11 +57,6 @@ class Plat
         return $this;
     }
 
-    public function getPlatId(): ?int
-    {
-        return $this->platId;
-    }
-
     public function getTitrePlat(): ?string
     {
         return $this->titrePlat;
@@ -89,19 +65,17 @@ class Plat
     public function setTitrePlat(string $titrePlat): static
     {
         $this->titrePlat = $titrePlat;
-
         return $this;
     }
 
-    public function getPhoto()
+    public function getImageUrl(): ?string
     {
-        return $this->photo;
+        return $this->imageUrl;
     }
 
-    public function setPhoto($photo): static
+    public function setImageUrl(?string $imageUrl): static
     {
-        $this->photo = $photo;
-
+        $this->imageUrl = $imageUrl;
         return $this;
     }
 
@@ -155,5 +129,4 @@ class Plat
 
         return $this;
     }
-
 }

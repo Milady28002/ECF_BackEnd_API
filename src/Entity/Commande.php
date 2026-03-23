@@ -101,11 +101,18 @@ class Commande
     private $menu = array();
 
     /**
+     * @var Collection<int, CommandeStatutHistorique>
+     */
+    #[ORM\OneToMany(targetEntity: CommandeStatutHistorique::class, mappedBy: 'commande')]
+    private Collection $historiquesStatut;
+
+    /**
      * Constructor
      */
     public function __construct()
     {
         $this->menu = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->historiquesStatut = new ArrayCollection();
     }
 
     public function getNumeroCommande(): ?string
@@ -300,6 +307,30 @@ class Commande
         return $this;
     }
 
+    /**
+     * @return Collection<int, CommandeStatutHistorique>
+     */
+    public function getHistoriquesStatut(): Collection
+    {
+        return $this->historiquesStatut;
+    }
+
+    public function addHistoriquesStatut(CommandeStatutHistorique $historiquesStatut): static
+    {
+        if (!$this->historiquesStatut->contains($historiquesStatut)) {
+            $this->historiquesStatut->add($historiquesStatut);
+            $historiquesStatut->setCommande($this);
+        }
+
+        return $this;
+    }
+
+    public function removeHistoriquesStatut(CommandeStatutHistorique $historiquesStatut): static
+    {
+        $this->historiquesStatut->removeElement($historiquesStatut);
+
+        return $this;
+    }
 
 
 }
