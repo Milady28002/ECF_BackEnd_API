@@ -44,9 +44,28 @@ class SecurityController extends AbstractController
             );
         }
 
+        $email = trim((string) $data['email']);
+        $password = (string) $data['password'];
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return new JsonResponse(
+                ['message' => 'Adresse email invalide'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        if (!$this->isPasswordStrong($password)) {
+            return new JsonResponse(
+                [
+                    'message' => 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'
+                ],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
         $existingUser = $this->manager
             ->getRepository(Utilisateur::class)
-            ->findOneBy(['email' => $data['email']]);
+            ->findOneBy(['email' => $email]);
 
         if ($existingUser) {
             return new JsonResponse(
@@ -56,15 +75,15 @@ class SecurityController extends AbstractController
         }
 
         $user = new Utilisateur();
-        $user->setFirstname($data['firstName']);
-        $user->setName($data['lastName']);
-        $user->setEmail($data['email']);
-        $user->setTelephone($data['telephone']);
+        $user->setFirstname(trim((string) $data['firstName']));
+        $user->setName(trim((string) $data['lastName']));
+        $user->setEmail($email);
+        $user->setTelephone(trim((string) $data['telephone']));
         $user->setVille($data['ville'] ?? 'Non renseignee');
         $user->setPays($data['pays'] ?? 'France');
         $user->setAdressePostale($data['adressePostale'] ?? 'Non renseignee');
         $user->setPassword(
-            $this->passwordHasher->hashPassword($user, $data['password'])
+            $this->passwordHasher->hashPassword($user, $password)
         );
         $user->setApiToken(bin2hex(random_bytes(32)));
 
@@ -108,20 +127,28 @@ class SecurityController extends AbstractController
     }
 
     #[Route('/account', name: 'account', methods: ['GET'])]
-        public function account(#[CurrentUser] ?Utilisateur $utilisateur): JsonResponse
-        {
-            if (!$utilisateur) {
-                return $this->json([
-                    'message' => 'Utilisateur non authentifié'
-                ], Response::HTTP_UNAUTHORIZED);
-            }
-
+    public function account(#[CurrentUser] ?Utilisateur $utilisateur): JsonResponse
+    {
+        if (!$utilisateur) {
             return $this->json([
-                'id' => $utilisateur->getId(),
-                'nom' => $utilisateur->getNom(),
-                'prenom' => $utilisateur->getPrenom(),
-                'email' => $utilisateur->getEmail(),
-                'telephone' => $utilisateur->getTelephone(),
-            ]);
+                'message' => 'Utilisateur non authentifié'
+            ], Response::HTTP_UNAUTHORIZED);
         }
+
+        return $this->json([
+            'id' => $utilisateur->getId(),
+            'nom' => $utilisateur->getNom(),
+            'prenom' => $utilisateur->getPrenom(),
+            'email' => $utilisateur->getEmail(),
+            'telephone' => $utilisateur->getTelephone(),
+        ]);
+    }
+
+    private function isPasswordStrong(string $password): bool
+    {
+        return (bool) preg_match(
+            '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/',
+            $password
+        );
+    }
 }
