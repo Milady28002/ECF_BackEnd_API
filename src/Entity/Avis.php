@@ -4,58 +4,48 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * Avis
- */
+#[ORM\Entity]
 #[ORM\Table(name: 'avis')]
 #[ORM\Index(name: 'fk_avis_utilisateur', columns: ['utilisateur_id'])]
-#[ORM\Entity]
+#[ORM\Index(name: 'fk_avis_commande', columns: ['commande_numero'])]
 class Avis
 {
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'avis_id', type: 'integer', nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $avisId;
+    #[ORM\Column(name: 'avis_id', type: 'integer', nullable: false)]
+    private ?int $avisId = null;
 
-    /**
-     * @var string
-     */
-    #[ORM\Column(name: 'note', type: 'string', length: 50, nullable: false)]
-    private $note;
+    #[ORM\Column(name: 'note', type: 'integer', nullable: false)]
+    private ?int $note = null;
 
-    /**
-     * @var string
-     */
-    #[ORM\Column(name: 'description', type: 'string', length: 50, nullable: false)]
-    private $description;
+    #[ORM\Column(name: 'description', type: 'text', nullable: false)]
+    private ?string $description = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'statut', type: 'string', length: 50, nullable: false)]
-    private $statut;
+    private ?string $statut = null;
 
-    /**
-     * @var \Utilisateur
-     */
-    #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id')]
+    #[ORM\Column(name: 'date_creation', type: 'datetime_immutable', nullable: false)]
+    private ?\DateTimeImmutable $dateCreation = null;
+
     #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
-    private $utilisateur;
+    #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id', nullable: false)]
+    private ?Utilisateur $utilisateur = null;
+
+    #[ORM\ManyToOne(targetEntity: Commande::class)]
+    #[ORM\JoinColumn(name: 'commande_numero', referencedColumnName: 'numero_commande', nullable: false)]
+    private ?Commande $commande = null;
 
     public function getAvisId(): ?int
     {
         return $this->avisId;
     }
 
-    public function getNote(): ?string
+    public function getNote(): ?int
     {
         return $this->note;
     }
 
-    public function setNote(string $note): static
+    public function setNote(int $note): static
     {
         $this->note = $note;
 
@@ -86,6 +76,18 @@ class Avis
         return $this;
     }
 
+    public function getDateCreation(): ?\DateTimeImmutable
+    {
+        return $this->dateCreation;
+    }
+
+    public function setDateCreation(\DateTimeImmutable $dateCreation): static
+    {
+        $this->dateCreation = $dateCreation;
+
+        return $this;
+    }
+
     public function getUtilisateur(): ?Utilisateur
     {
         return $this->utilisateur;
@@ -98,5 +100,15 @@ class Avis
         return $this;
     }
 
+    public function getCommande(): ?Commande
+    {
+        return $this->commande;
+    }
 
+    public function setCommande(?Commande $commande): static
+    {
+        $this->commande = $commande;
+
+        return $this;
+    }
 }

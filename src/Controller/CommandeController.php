@@ -106,7 +106,6 @@ final class CommandeController extends AbstractController
         $pretMateriel = isset($payload['pret_materiel']) ? (bool) $payload['pret_materiel'] : false;
         $restitutionMateriel = isset($payload['restitution_materiel']) ? (bool) $payload['restitution_materiel'] : false;
 
-   
         $prixLivraison = $this->calculatePrixLivraison($adresseLivraison);
 
         $commande = new Commande();
@@ -137,45 +136,49 @@ final class CommandeController extends AbstractController
         $entityManager->persist($historique);
         $entityManager->flush();
 
-            try {
+        try {
             $email = (new Email())
                 ->from('no-reply@vite-gourmand.fr')
                 ->to($user->getEmail())
                 ->subject('Confirmation de votre commande')
                 ->html(sprintf(
-    '
-                    <h1 style="color:#008cff;">Commande confirmée</h1>
+                    '
+                    <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
+                      <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                        <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
+                        <h1 style="color:#008cff;">Commande confirmée</h1>
 
-                    <p>Bonjour %s,</p>
-                    <p>Votre commande a bien été enregistrée.</p>
+                        <p>Bonjour %s,</p>
+                        <p>Votre commande a bien été enregistrée.</p>
 
-                    <p><strong>Numéro :</strong> %s</p>
-                    <p><strong>Date :</strong> %s</p>
-                    <p><strong>Heure :</strong> %s</p>
-                    <p><strong>Adresse :</strong> %s</p>
+                        <div style="background:#f8f8f8; padding:15px; border-radius:8px; margin:15px 0;">
+                          <p><strong>Numéro :</strong> %s</p>
+                          <p><strong>Date :</strong> %s</p>
+                          <p><strong>Heure :</strong> %s</p>
+                          <p><strong>Adresse :</strong> %s</p>
+                          <p><strong>Total :</strong> %.2f €</p>
+                        </div>
 
-                    <p style="font-size:18px;">
-                        <strong>Total : %.2f €</strong>
-                    </p>
-
-                    <p>Merci pour votre confiance.</p>
+                        <p>Merci pour votre confiance 🙏</p>
+                      </div>
+                    </body>
                     ',
                     htmlspecialchars((string) $user->getFirstname()),
                     htmlspecialchars((string) $commande->getNumeroCommande()),
                     $commande->getDatePrestation()->format('d/m/Y'),
-                    $commande->getHeureLivraison(),
+                    htmlspecialchars((string) $commande->getHeureLivraison()),
                     htmlspecialchars((string) $commande->getAdresseLivraison()),
                     $commande->getPrixMenu() + $commande->getPrixLivraison()
                 ));
 
             $mailer->send($email);
-                } catch (\Throwable $e) {
+        } catch (\Throwable $e) {
             // Optionnel : logger plus tard
         }
 
         return $this->json($this->serializeCommande($commande), 201);
     }
-   
+
     #[Route('', name: 'api_commande_list', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function list(
@@ -244,201 +247,200 @@ final class CommandeController extends AbstractController
         return $this->json($data);
     }
 
-
-        #[Route('/{id}', name: 'api_commande_show', methods: ['GET'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
-        #[IsGranted('ROLE_USER')]
-        public function show(
-            string $id,
-            EntityManagerInterface $entityManager,
-            #[CurrentUser] ?Utilisateur $user
-        ): JsonResponse {
-            if (!$user) {
-                return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-            }
-
-            $commande = $entityManager->getRepository(Commande::class)->findOneBy([
-                'numeroCommande' => $id
-            ]);
-
-            if (!$commande) {
-                return $this->json(['message' => 'Commande introuvable'], 404);
-            }
-
-            if (
-                $commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()
-                && !$this->isGranted('ROLE_EMPLOYE')
-            ) {
-                return $this->json(['message' => 'Accès interdit'], 403);
-            }
-
-            return $this->json($this->serializeCommande($commande));
+    #[Route('/{id}', name: 'api_commande_show', methods: ['GET'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
+    public function show(
+        string $id,
+        EntityManagerInterface $entityManager,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
-        #[Route('/{id}', name: 'api_commande_update', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
-        #[IsGranted('ROLE_USER')]
-        public function update(
-            string $id,
-            Request $request,
-            EntityManagerInterface $entityManager,
-            #[CurrentUser] ?Utilisateur $user
-        ): JsonResponse {
-            if (!$user) {
-                return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-            }
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
 
-            $commande = $entityManager->getRepository(Commande::class)->findOneBy([
-                'numeroCommande' => $id
-            ]);
-
-            if (!$commande) {
-                return $this->json(['message' => 'Commande introuvable'], 404);
-            }
-
-            if ($commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()) {
-                return $this->json(['message' => 'Accès interdit'], 403);
-            }
-
-            if ($commande->getStatut() !== 'en_attente') {
-                return $this->json([
-                    'message' => 'La commande ne peut plus être modifiée une fois prise en charge'
-                ], 422);
-            }
-
-            $payload = json_decode($request->getContent(), true);
-
-            if (!is_array($payload)) {
-                return $this->json(['message' => 'JSON invalide'], 400);
-            }
-
-            $menu = $this->getCommandeMenu($commande);
-
-            if (!$menu) {
-                return $this->json(['message' => 'Aucun menu lié à cette commande'], 422);
-            }
-
-            if (array_key_exists('menu_id', $payload)) {
-                return $this->json([
-                    'message' => 'Le menu ne peut pas être modifié'
-                ], 422);
-            }
-
-            if (array_key_exists('nombre_personnes', $payload)) {
-                $nombrePersonnes = (int) $payload['nombre_personnes'];
-
-                if ($nombrePersonnes < $menu->getNombrePersonneMinimum()) {
-                    return $this->json([
-                        'message' => sprintf(
-                            'Le nombre minimum de personnes pour ce menu est de %d',
-                            $menu->getNombrePersonneMinimum()
-                        )
-                    ], 422);
-                }
-
-                $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
-                $minimum = $menu->getNombrePersonneMinimum();
-
-                if ($nombrePersonnes >= $minimum + 5) {
-                    $prixMenu = $prixMenu * 0.9;
-                }
-
-                $commande->setNombrePersonnes($nombrePersonnes);
-                $commande->setPrixMenu($prixMenu);
-            }
-
-            if (array_key_exists('date_prestation', $payload)) {
-                try {
-                    $commande->setDatePrestation(new \DateTime($payload['date_prestation']));
-                } catch (\Exception $e) {
-                    return $this->json(['message' => 'date_prestation invalide'], 422);
-                }
-            }
-
-            if (array_key_exists('heure_livraison', $payload)) {
-                $heureLivraison = trim((string) $payload['heure_livraison']);
-
-                if ($heureLivraison === '') {
-                    return $this->json(['message' => 'heure_livraison invalide'], 422);
-                }
-
-                $commande->setHeureLivraison($heureLivraison);
-            }
-
-            if (array_key_exists('adresse_livraison', $payload)) {
-                $adresseLivraison = trim((string) $payload['adresse_livraison']);
-
-                if ($adresseLivraison === '') {
-                    return $this->json(['message' => 'adresse_livraison invalide'], 422);
-                }
-
-                if (!$this->isValidAdresseLivraison($adresseLivraison)) {
-                    return $this->json([
-                        'message' => 'L’adresse de livraison doit contenir un numéro, une voie, un code postal et une ville.'
-                    ], 422);
-                }
-
-                $commande->setAdresseLivraison($adresseLivraison);
-                $commande->setPrixLivraison($this->calculatePrixLivraison($adresseLivraison));
-            }
-
-            if (array_key_exists('pret_materiel', $payload)) {
-                $commande->setPretMateriel((bool) $payload['pret_materiel']);
-            }
-
-            if (array_key_exists('restitution_materiel', $payload)) {
-                $commande->setRestitutionMateriel((bool) $payload['restitution_materiel']);
-            }
-
-            $entityManager->flush();
-
-            return $this->json($this->serializeCommande($commande));
+        if (!$commande) {
+            return $this->json(['message' => 'Commande introuvable'], 404);
         }
 
-        #[Route('/{id}/cancel', name: 'api_commande_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
-        #[IsGranted('ROLE_USER')]
-        public function cancel(
-            string $id,
-            EntityManagerInterface $entityManager,
-            #[CurrentUser] ?Utilisateur $user
-        ): JsonResponse {
-            if (!$user) {
-                return $this->json(['message' => 'Utilisateur non authentifié'], 401);
-            }
-
-            $commande = $entityManager->getRepository(Commande::class)->findOneBy([
-                'numeroCommande' => $id
-            ]);
-
-            if (!$commande) {
-                return $this->json(['message' => 'Commande introuvable'], 404);
-            }
-
-            if ($commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()) {
-                return $this->json(['message' => 'Accès interdit'], 403);
-            }
-
-            if ($commande->getStatut() === 'annulee') {
-                return $this->json([
-                    'message' => 'La commande est déjà annulée'
-                ], 422);
-            }
-
-            if ($commande->getStatut() !== 'en_attente') {
-                return $this->json([
-                    'message' => 'La commande ne peut plus être annulée une fois prise en charge'
-                ], 422);
-            }
-
-            $commande->setStatut('annulee');
-
-            $menu = $this->getCommandeMenu($commande);
-            if ($menu) {
-                $menu->setQuantiteRestante($menu->getQuantiteRestante() + 1);
-            }
-
-            $entityManager->flush();
-
-            return $this->json($this->serializeCommande($commande));
+        if (
+            $commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()
+            && !$this->isGranted('ROLE_EMPLOYE')
+        ) {
+            return $this->json(['message' => 'Accès interdit'], 403);
         }
+
+        return $this->json($this->serializeCommande($commande));
+    }
+
+    #[Route('/{id}', name: 'api_commande_update', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
+    public function update(
+        string $id,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
+        }
+
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
+
+        if (!$commande) {
+            return $this->json(['message' => 'Commande introuvable'], 404);
+        }
+
+        if ($commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()) {
+            return $this->json(['message' => 'Accès interdit'], 403);
+        }
+
+        if ($commande->getStatut() !== 'en_attente') {
+            return $this->json([
+                'message' => 'La commande ne peut plus être modifiée une fois prise en charge'
+            ], 422);
+        }
+
+        $payload = json_decode($request->getContent(), true);
+
+        if (!is_array($payload)) {
+            return $this->json(['message' => 'JSON invalide'], 400);
+        }
+
+        $menu = $this->getCommandeMenu($commande);
+
+        if (!$menu) {
+            return $this->json(['message' => 'Aucun menu lié à cette commande'], 422);
+        }
+
+        if (array_key_exists('menu_id', $payload)) {
+            return $this->json([
+                'message' => 'Le menu ne peut pas être modifié'
+            ], 422);
+        }
+
+        if (array_key_exists('nombre_personnes', $payload)) {
+            $nombrePersonnes = (int) $payload['nombre_personnes'];
+
+            if ($nombrePersonnes < $menu->getNombrePersonneMinimum()) {
+                return $this->json([
+                    'message' => sprintf(
+                        'Le nombre minimum de personnes pour ce menu est de %d',
+                        $menu->getNombrePersonneMinimum()
+                    )
+                ], 422);
+            }
+
+            $prixMenu = $menu->getPrixParPersonne() * $nombrePersonnes;
+            $minimum = $menu->getNombrePersonneMinimum();
+
+            if ($nombrePersonnes >= $minimum + 5) {
+                $prixMenu = $prixMenu * 0.9;
+            }
+
+            $commande->setNombrePersonnes($nombrePersonnes);
+            $commande->setPrixMenu($prixMenu);
+        }
+
+        if (array_key_exists('date_prestation', $payload)) {
+            try {
+                $commande->setDatePrestation(new \DateTime($payload['date_prestation']));
+            } catch (\Exception $e) {
+                return $this->json(['message' => 'date_prestation invalide'], 422);
+            }
+        }
+
+        if (array_key_exists('heure_livraison', $payload)) {
+            $heureLivraison = trim((string) $payload['heure_livraison']);
+
+            if ($heureLivraison === '') {
+                return $this->json(['message' => 'heure_livraison invalide'], 422);
+            }
+
+            $commande->setHeureLivraison($heureLivraison);
+        }
+
+        if (array_key_exists('adresse_livraison', $payload)) {
+            $adresseLivraison = trim((string) $payload['adresse_livraison']);
+
+            if ($adresseLivraison === '') {
+                return $this->json(['message' => 'adresse_livraison invalide'], 422);
+            }
+
+            if (!$this->isValidAdresseLivraison($adresseLivraison)) {
+                return $this->json([
+                    'message' => 'L’adresse de livraison doit contenir un numéro, une voie, un code postal et une ville.'
+                ], 422);
+            }
+
+            $commande->setAdresseLivraison($adresseLivraison);
+            $commande->setPrixLivraison($this->calculatePrixLivraison($adresseLivraison));
+        }
+
+        if (array_key_exists('pret_materiel', $payload)) {
+            $commande->setPretMateriel((bool) $payload['pret_materiel']);
+        }
+
+        if (array_key_exists('restitution_materiel', $payload)) {
+            $commande->setRestitutionMateriel((bool) $payload['restitution_materiel']);
+        }
+
+        $entityManager->flush();
+
+        return $this->json($this->serializeCommande($commande));
+    }
+
+    #[Route('/{id}/cancel', name: 'api_commande_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
+    #[IsGranted('ROLE_USER')]
+    public function cancel(
+        string $id,
+        EntityManagerInterface $entityManager,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse {
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
+        }
+
+        $commande = $entityManager->getRepository(Commande::class)->findOneBy([
+            'numeroCommande' => $id
+        ]);
+
+        if (!$commande) {
+            return $this->json(['message' => 'Commande introuvable'], 404);
+        }
+
+        if ($commande->getUtilisateur()?->getUtilisateurId() !== $user->getUtilisateurId()) {
+            return $this->json(['message' => 'Accès interdit'], 403);
+        }
+
+        if ($commande->getStatut() === 'annulee') {
+            return $this->json([
+                'message' => 'La commande est déjà annulée'
+            ], 422);
+        }
+
+        if ($commande->getStatut() !== 'en_attente') {
+            return $this->json([
+                'message' => 'La commande ne peut plus être annulée une fois prise en charge'
+            ], 422);
+        }
+
+        $commande->setStatut('annulee');
+
+        $menu = $this->getCommandeMenu($commande);
+        if ($menu) {
+            $menu->setQuantiteRestante($menu->getQuantiteRestante() + 1);
+        }
+
+        $entityManager->flush();
+
+        return $this->json($this->serializeCommande($commande));
+    }
 
     #[Route('/employe/{id}/cancel', name: 'api_commande_employe_cancel', methods: ['PATCH'], requirements: ['id' => 'CMD[0-9A-Z]+'])]
     #[IsGranted('ROLE_EMPLOYE')]
@@ -446,6 +448,7 @@ final class CommandeController extends AbstractController
         string $id,
         Request $request,
         EntityManagerInterface $entityManager,
+        MailerInterface $mailer,
         #[CurrentUser] ?Utilisateur $user
     ): JsonResponse {
         if (!$user) {
@@ -496,6 +499,45 @@ final class CommandeController extends AbstractController
 
         $entityManager->flush();
 
+        try {
+            $client = $commande->getUtilisateur();
+
+            if ($client && $client->getEmail()) {
+                $email = (new Email())
+                    ->from('no-reply@vite-gourmand.fr')
+                    ->to($client->getEmail())
+                    ->subject('Annulation de votre commande')
+                    ->html(sprintf(
+                        '
+                        <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
+                          <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                            <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
+                            <h1 style="color:#b42318;">Commande annulée</h1>
+
+                            <p>Bonjour %s,</p>
+                            <p>Votre commande <strong>%s</strong> a été annulée par notre équipe.</p>
+
+                            <div style="background:#f8f8f8; padding:15px; border-radius:8px; margin:15px 0;">
+                              <p><strong>Motif :</strong> %s</p>
+                              <p><strong>Mode de contact utilisé :</strong> %s</p>
+                            </div>
+
+                            <p>Nous restons à votre disposition pour toute question.</p>
+                          </div>
+                        </body>
+                        ',
+                        htmlspecialchars((string) $client->getFirstname()),
+                        htmlspecialchars((string) $commande->getNumeroCommande()),
+                        htmlspecialchars($motifAnnulation),
+                        htmlspecialchars($modeContact)
+                    ));
+
+                $mailer->send($email);
+            }
+        } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
+
         return $this->json($this->serializeCommande($commande));
     }
 
@@ -505,6 +547,7 @@ final class CommandeController extends AbstractController
         string $id,
         Request $request,
         EntityManagerInterface $entityManager,
+        MailerInterface $mailer,
         #[CurrentUser] ?Utilisateur $user
     ): JsonResponse {
         if (!$user) {
@@ -563,6 +606,78 @@ final class CommandeController extends AbstractController
         $entityManager->persist($historique);
         $entityManager->flush();
 
+        try {
+            $client = $commande->getUtilisateur();
+
+            if ($client && $client->getEmail()) {
+                $subject = null;
+                $title = null;
+                $message = null;
+                $color = '#008cff';
+
+                if ($nouveauStatut === 'acceptee') {
+                    $subject = 'Votre commande a été acceptée';
+                    $title = 'Commande acceptée';
+                    $message = 'Bonne nouvelle : votre commande a bien été acceptée par notre équipe.';
+                } elseif ($nouveauStatut === 'en_preparation') {
+                    $subject = 'Votre commande est en préparation';
+                    $title = 'Commande en préparation';
+                    $message = 'Votre commande est actuellement en préparation.';
+                } elseif ($nouveauStatut === 'en_livraison') {
+                    $subject = 'Votre commande est en livraison';
+                    $title = 'Commande en livraison';
+                    $message = 'Votre commande est en cours de livraison.';
+                } elseif ($nouveauStatut === 'livree') {
+                    $subject = 'Votre commande a été livrée';
+                    $title = 'Commande livrée';
+                    $message = 'Votre commande a bien été livrée.';
+                } elseif ($nouveauStatut === 'terminee') {
+                    $subject = 'Votre commande est terminée';
+                    $title = 'Commande terminée';
+                    $message = 'Votre commande est maintenant terminée. Merci pour votre confiance.';
+                }
+
+                if ($subject && $title && $message) {
+                    $email = (new Email())
+                        ->from('no-reply@vite-gourmand.fr')
+                        ->to($client->getEmail())
+                        ->subject($subject)
+                        ->html(sprintf(
+                            '
+                            <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
+                              <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                                <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
+                                <h1 style="color:%s;">%s</h1>
+
+                                <p>Bonjour %s,</p>
+                                <p>%s</p>
+
+                                <div style="background:#f8f8f8; padding:15px; border-radius:8px; margin:15px 0;">
+                                  <p><strong>Numéro :</strong> %s</p>
+                                  <p><strong>Date :</strong> %s</p>
+                                  <p><strong>Heure :</strong> %s</p>
+                                </div>
+
+                                <p>Merci pour votre confiance 🙏</p>
+                              </div>
+                            </body>
+                            ',
+                            htmlspecialchars($color),
+                            htmlspecialchars($title),
+                            htmlspecialchars((string) $client->getFirstname()),
+                            htmlspecialchars($message),
+                            htmlspecialchars((string) $commande->getNumeroCommande()),
+                            $commande->getDatePrestation()?->format('d/m/Y') ?? 'Non renseignée',
+                            htmlspecialchars((string) $commande->getHeureLivraison())
+                        ));
+
+                    $mailer->send($email);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
+
         return $this->json($this->serializeCommande($commande));
     }
 
@@ -575,14 +690,10 @@ final class CommandeController extends AbstractController
         return null;
     }
 
-    
-
-        private function isValidAdresseLivraison(string $adresse): bool
+    private function isValidAdresseLivraison(string $adresse): bool
     {
         $adresse = trim($adresse);
 
-        // Format attendu :
-        // 18 rue Pompon, 33600 Pessac
         return (bool) preg_match('/^\d+\s+.+,\s*\d{5}\s+.+$/u', $adresse);
     }
 
@@ -626,7 +737,7 @@ final class CommandeController extends AbstractController
                 'image' => $menu->getImage(),
             ];
         }
-        
+
         $historiqueStatuts = [];
 
         foreach ($commande->getHistoriquesStatut() as $historique) {
