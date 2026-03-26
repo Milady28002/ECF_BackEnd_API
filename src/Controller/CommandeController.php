@@ -6,6 +6,7 @@ use App\Entity\Commande;
 use App\Entity\Menu;
 use App\Entity\Utilisateur;
 use App\Entity\CommandeStatutHistorique;
+use App\Entity\Avis;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -754,6 +755,24 @@ final class CommandeController extends AbstractController
             ];
         }
 
+        $avisDejaLaisse = false;
+
+        foreach ($commande->getAvis() as $avis) {
+            if ($avis->getUtilisateur()?->getUtilisateurId() === $commande->getUtilisateur()?->getUtilisateurId()) {
+                $avisDejaLaisse = true;
+                break;
+            }
+        }
+
+        $avisDejaLaisse = false;
+
+        foreach ($commande->getAvis() as $avis) {
+            if ($avis->getUtilisateur()?->getUtilisateurId() === $commande->getUtilisateur()?->getUtilisateurId()) {
+                $avisDejaLaisse = true;
+                break;
+            }
+        }
+
         return [
             'numero_commande' => $commande->getNumeroCommande(),
             'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
@@ -769,6 +788,7 @@ final class CommandeController extends AbstractController
             'mode_contact_annulation' => $commande->getModeContactAnnulation(),
             'pret_materiel' => $commande->isPretMateriel(),
             'restitution_materiel' => $commande->isRestitutionMateriel(),
+            'avis_deja_laisse' => $avisDejaLaisse,
             'utilisateur' => $commande->getUtilisateur() ? [
                 'id' => $commande->getUtilisateur()->getUtilisateurId(),
                 'name' => $commande->getUtilisateur()->getName(),
@@ -778,6 +798,7 @@ final class CommandeController extends AbstractController
             ] : null,
             'menus' => $menus,
             'historique_statuts' => $historiqueStatuts,
+            'avis_deja_laisse' => $avisDejaLaisse,
         ];
     }
 }

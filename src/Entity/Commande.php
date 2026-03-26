@@ -6,6 +6,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Entity\Avis;
 
 /**
  * Commande
@@ -107,12 +108,19 @@ class Commande
     private Collection $historiquesStatut;
 
     /**
+     * @var Collection<int, Avis>
+     */
+    #[ORM\OneToMany(mappedBy: 'commande', targetEntity: Avis::class)]
+    private Collection $avis;
+
+    /**
      * Constructor
      */
     public function __construct()
     {
-        $this->menu = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->menu = new ArrayCollection();
         $this->historiquesStatut = new ArrayCollection();
+        $this->avis = new ArrayCollection();
     }
 
     public function getNumeroCommande(): ?string
@@ -332,5 +340,33 @@ class Commande
         return $this;
     }
 
+    /**
+     * @return Collection<int, Avis>
+     */
+    public function getAvis(): Collection
+    {
+        return $this->avis;
+    }
 
+    public function addAvi(Avis $avis): static
+    {
+        if (!$this->avis->contains($avis)) {
+            $this->avis->add($avis);
+            $avis->setCommande($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAvi(Avis $avis): static
+    {
+        if ($this->avis->removeElement($avis)) {
+            if ($avis->getCommande() === $this) {
+                $avis->setCommande(null);
+            }
+        }
+
+        return $this;
+    }
 }
+
