@@ -34,6 +34,8 @@ security:
         - { path: ^/api/registration, roles: PUBLIC_ACCESS }
         - { path: ^/api/account/me, roles: ROLE_USER }
         - { path: ^/api/account/edit, roles: ROLE_USER }
+        - { path: ^/api/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/api/reset-password, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

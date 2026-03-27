@@ -48,8 +48,16 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'password', type: 'string', length: 255, nullable: false)]
     private $password;
 
+
     #[ORM\Column(name: 'api_token', type: 'string', length: 255, nullable: true)]
     private ?string $apiToken = null;
+
+    #[ORM\Column(name: 'reset_token', type: 'string', length: 255, nullable: true)]
+    private ?string $resetToken = null;
+
+    #[ORM\Column(name: 'reset_token_expires_at', type: 'datetime', nullable: true)]
+    private ?\DateTimeInterface $resetTokenExpiresAt = null;
+
     public function getApiToken(): ?string
     {
     return $this->apiToken;
@@ -60,7 +68,33 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     $this->apiToken = $apiToken;
 
     return $this;
-}
+    }
+
+        public function getResetToken(): ?string
+    {
+        return $this->resetToken;
+    }
+
+    public function setResetToken(?string $resetToken): static
+    {
+        $this->resetToken = $resetToken;
+
+        return $this;
+    }
+
+    public function getResetTokenExpiresAt(): ?\DateTimeInterface
+    {
+        return $this->resetTokenExpiresAt;
+    }
+
+    public function setResetTokenExpiresAt(?\DateTimeInterface $resetTokenExpiresAt): static
+    {
+        $this->resetTokenExpiresAt = $resetTokenExpiresAt;
+
+        return $this;
+    }
+
+
 
     /**
      * @var string
