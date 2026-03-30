@@ -31,7 +31,7 @@ class Avis
     #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id', nullable: false)]
     private ?Utilisateur $utilisateur = null;
 
-    #[ORM\ManyToOne(targetEntity: Commande::class)]
+    #[ORM\ManyToOne(targetEntity: Commande::class, inversedBy: 'avis')]
     #[ORM\JoinColumn(name: 'commande_numero', referencedColumnName: 'numero_commande', nullable: false)]
     private ?Commande $commande = null;
 
@@ -48,7 +48,6 @@ class Avis
     public function setNote(int $note): static
     {
         $this->note = $note;
-
         return $this;
     }
 
@@ -60,7 +59,6 @@ class Avis
     public function setDescription(string $description): static
     {
         $this->description = $description;
-
         return $this;
     }
 
@@ -72,7 +70,6 @@ class Avis
     public function setStatut(string $statut): static
     {
         $this->statut = $statut;
-
         return $this;
     }
 
@@ -84,7 +81,6 @@ class Avis
     public function setDateCreation(\DateTimeImmutable $dateCreation): static
     {
         $this->dateCreation = $dateCreation;
-
         return $this;
     }
 
@@ -96,7 +92,6 @@ class Avis
     public function setUtilisateur(?Utilisateur $utilisateur): static
     {
         $this->utilisateur = $utilisateur;
-
         return $this;
     }
 
@@ -108,7 +103,6 @@ class Avis
     public function setCommande(?Commande $commande): static
     {
         $this->commande = $commande;
-
         return $this;
     }
 }
