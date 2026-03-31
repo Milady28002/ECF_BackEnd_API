@@ -39,6 +39,8 @@ class AdminEmployeeController extends AbstractController
 
         if (
             !is_array($data) ||
+            empty($data['firstName']) ||
+            empty($data['lastName']) ||
             empty($data['email']) ||
             empty($data['password'])
         ) {
@@ -89,8 +91,8 @@ class AdminEmployeeController extends AbstractController
 
         // Création employé
         $employee = new Utilisateur();
-        $employee->setName('Employe');
-        $employee->setFirstname('Nouveau');
+        $employee->setName(trim((string) $data['lastName']));
+        $employee->setFirstname(trim((string) $data['firstName']));
         $employee->setEmail($email);
         $employee->setTelephone('Non renseigne');
         $employee->setVille('Non renseignee');
@@ -186,7 +188,7 @@ class AdminEmployeeController extends AbstractController
             return [
                 'id' => $employee->getUtilisateurId(),
                 'name' => $employee->getName(),
-                'firstname' => $employee->getFirstname(),
+                'firstName' => $employee->getFirstname(),
                 'email' => $employee->getEmail(),
                 'is_active' => $employee->isActive(),
                 'roles' => $employee->getRoles(),
