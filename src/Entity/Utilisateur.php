@@ -24,30 +24,22 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $utilisateurId;
 
-    /**
-     * @var string
-     */
-    #[ORM\Column(name: 'name', type: 'string', length: 255, nullable: false)]
-    private $name;
 
-    /**
-     * @var string|null
-     */
-    #[ORM\Column(name: 'firstname', type: 'string', length: 255, nullable: true, options: ['default' => 'NULL'])]
+    #[ORM\Column(name: 'name', type: 'string', length: 255, nullable: false)]
+    private ?string $name = null;
+
+   
+    #[ORM\Column(name: 'firstname', type: 'string', length: 255, nullable: true)]
     private ?string $firstname = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'email', type: 'string', length: 255, nullable: false)]
-    private $email;
+    private ?string $email = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'password', type: 'string', length: 255, nullable: false)]
-    private $password;
+    private ?string $password = null;
 
+    #[ORM\Column(name: 'is_active', type: 'boolean', options: ['default' => true])]
+    private bool $isActive = true;
 
     #[ORM\Column(name: 'api_token', type: 'string', length: 255, nullable: true)]
     private ?string $apiToken = null;
@@ -60,17 +52,17 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getApiToken(): ?string
     {
-    return $this->apiToken;
+        return $this->apiToken;
     }
 
     public function setApiToken(?string $apiToken): static
     {
-    $this->apiToken = $apiToken;
+        $this->apiToken = $apiToken;
 
-    return $this;
+        return $this;
     }
 
-        public function getResetToken(): ?string
+    public function getResetToken(): ?string
     {
         return $this->resetToken;
     }
@@ -94,31 +86,17 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-
-
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'telephone', type: 'string', length: 50, nullable: false)]
-    private $telephone;
+    private ?string $telephone = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'ville', type: 'string', length: 50, nullable: false)]
-    private $ville;
+    private ?string $ville = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'pays', type: 'string', length: 50, nullable: false)]
-    private $pays;
+    private ?string $pays = null;
 
-    /**
-     * @var string
-     */
     #[ORM\Column(name: 'adresse_postale', type: 'string', length: 50, nullable: false)]
-    private $adressePostale;
+    private ?string $adressePostale = null;
 
     /**
      * @var \Doctrine\Common\Collections\Collection
@@ -127,7 +105,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinColumn(name: 'utilisateur_id', referencedColumnName: 'utilisateur_id')]
     #[ORM\InverseJoinColumn(name: 'role_id', referencedColumnName: 'role_id')]
     #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'utilisateur')]
-    private $role = array();
+    private Collection $role;
 
     /**
      * Constructor
@@ -186,6 +164,18 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
 
         return $this;
     }
@@ -263,7 +253,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     }
     public function getUserIdentifier(): string
     {
-    return (string) $this->email;
+        return (string) $this->email;
     }
 
     public function getRoles(): array
@@ -280,7 +270,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
             $roles[] = $libelle;
         }
 
-        // Garantie minimale
+        
         $roles[] = 'ROLE_USER';
 
         return array_values(array_unique($roles));
@@ -288,8 +278,8 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     }
     public function getUsername(): string
     {
-    // Compat ancien Symfony / vieux composants
-    return $this->getUserIdentifier();
+   
+        return $this->getUserIdentifier();
     }
 
     public function getSalt(): ?string

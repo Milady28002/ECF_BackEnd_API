@@ -107,12 +107,24 @@ class SecurityController extends AbstractController
         path: '/api/login',
         summary: "Connexion d'un utilisateur"
     )]
+    #[Route('/login', name: 'login', methods: ['POST'])]
+    #[OA\Post(
+        path: '/api/login',
+        summary: "Connexion d'un utilisateur"
+    )]
     public function login(#[CurrentUser] ?Utilisateur $user): JsonResponse
     {
         if (null === $user) {
             return new JsonResponse(
                 ['message' => 'Missing credentials'],
                 Response::HTTP_UNAUTHORIZED
+            );
+        }
+
+        if (!$user->isActive()) {
+            return new JsonResponse(
+                ['message' => 'Ce compte est désactivé.'],
+                Response::HTTP_FORBIDDEN
             );
         }
 
