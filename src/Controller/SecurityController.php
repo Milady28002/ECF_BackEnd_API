@@ -14,6 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use App\Entity\Role;
 
 #[Route('/api', name: 'app_api_')]
 class SecurityController extends AbstractController
@@ -24,89 +25,137 @@ class SecurityController extends AbstractController
     ) {
     }
 
-    #[Route('/registration', name: 'registration', methods: ['POST'])]
-    #[OA\Post(
-        path: '/api/registration',
-        summary: "Inscription d'un utilisateur"
-    )]
-    public function register(Request $request): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
+#[Route('/registration', name: 'registration', methods: ['POST'])]
+#[OA\Post(
+    path: '/api/registration',
+    summary: "Inscription d'un utilisateur"
+)]
+public function register(Request $request, MailerInterface $mailer): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
 
-        if (
-            empty($data['firstName']) ||
-            empty($data['lastName']) ||
-            empty($data['email']) ||
-            empty($data['password']) ||
-            empty($data['telephone'])
-        ) {
-            return new JsonResponse(
-                ['message' => 'Champs obligatoires manquants'],
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        $email = trim((string) $data['email']);
-        $password = (string) $data['password'];
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return new JsonResponse(
-                ['message' => 'Adresse email invalide'],
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        if (!$this->isPasswordStrong($password)) {
-            return new JsonResponse(
-                [
-                    'message' => 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'
-                ],
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
-        $existingUser = $this->manager
-            ->getRepository(Utilisateur::class)
-            ->findOneBy(['email' => $email]);
-
-        if ($existingUser) {
-            return new JsonResponse(
-                ['message' => 'Cet email est déjà utilisé'],
-                Response::HTTP_CONFLICT
-            );
-        }
-
-        $user = new Utilisateur();
-        $user->setFirstname(trim((string) $data['firstName']));
-        $user->setName(trim((string) $data['lastName']));
-        $user->setEmail($email);
-        $user->setTelephone(trim((string) $data['telephone']));
-        $user->setVille($data['ville'] ?? 'Non renseignee');
-        $user->setPays($data['pays'] ?? 'France');
-        $user->setAdressePostale($data['adressePostale'] ?? 'Non renseignee');
-        $user->setPassword(
-            $this->passwordHasher->hashPassword($user, $password)
+    if (
+        empty($data['name']) ||
+        empty($data['firstname']) ||
+        empty($data['email']) ||
+        empty($data['password']) ||
+        empty($data['telephone']) ||
+        empty($data['adresse_postale'])
+    ) {
+        return new JsonResponse(
+            ['message' => 'Champs obligatoires manquants'],
+            Response::HTTP_BAD_REQUEST
         );
-        $user->setApiToken(bin2hex(random_bytes(32)));
+    }
 
-        $this->manager->persist($user);
-        $this->manager->flush();
+    $email = trim((string) $data['email']);
+    $password = (string) $data['password'];
 
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return new JsonResponse(
+            ['message' => 'Adresse email invalide'],
+            Response::HTTP_BAD_REQUEST
+        );
+    }
+
+    if (!$this->isPasswordStrong($password)) {
         return new JsonResponse(
             [
-                'user' => $user->getUserIdentifier(),
-                'apiToken' => $user->getApiToken(),
-                'roles' => $user->getRoles(),
+                'message' => 'Le mot de passe doit contenir au moins 10 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'
+            ],
+            Response::HTTP_BAD_REQUEST
+        );
+    }
+
+    $existingUser = $this->manager
+        ->getRepository(Utilisateur::class)
+        ->findOneBy(['email' => $email]);
+
+    if ($existingUser) {
+        return new JsonResponse(
+            ['message' => 'Cet email est déjà utilisé'],
+            Response::HTTP_CONFLICT
+        );
+    }
+
+    $roleUser = $this->manager
+        ->getRepository(Role::class)
+        ->findOneBy(['libelle' => 'ROLE_USER']);
+
+    if (!$roleUser) {
+        return new JsonResponse(
+            ['message' => 'Le rôle ROLE_USER est introuvable'],
+            Response::HTTP_INTERNAL_SERVER_ERROR
+        );
+    }
+
+    $user = new Utilisateur();
+    $user->setName(trim((string) $data['name']));
+    $user->setFirstname(trim((string) $data['firstname']));
+    $user->setEmail($email);
+    $user->setTelephone(trim((string) $data['telephone']));
+    $user->setVille(!empty($data['ville']) ? trim((string) $data['ville']) : null);
+    $user->setPays(!empty($data['pays']) ? trim((string) $data['pays']) : null);
+    $user->setAdressePostale(trim((string) $data['adresse_postale']));
+    $user->setPassword(
+        $this->passwordHasher->hashPassword($user, $password)
+    );
+    $user->setApiToken(bin2hex(random_bytes(32)));
+    $user->setIsActive(true);
+    $user->addRole($roleUser);
+
+    $this->manager->persist($user);
+    $this->manager->flush();
+
+    try {
+        $welcomeEmail = (new Email())
+            ->from('no-reply@vite-gourmand.fr')
+            ->to($user->getEmail())
+            ->subject('Bienvenue sur Vite & Gourmand')
+            ->html(sprintf(
+                '
+                <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
+                    <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                        <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
+                        <h1 style="color:#008cff;">Bienvenue %s !</h1>
+
+                        <p>Votre compte a bien été créé.</p>
+                        <p>Vous pouvez désormais vous connecter et accéder à votre espace personnel.</p>
+
+                        <p style="margin:24px 0;">
+                            <a href="http://127.0.0.1:3001/#/signin" style="background:#7bbd2f; color:#fff; text-decoration:none; padding:12px 20px; border-radius:8px; display:inline-block;">
+                                Se connecter
+                            </a>
+                        </p>
+
+                        <p>À très bientôt sur <strong>Vite &amp; Gourmand</strong>.</p>
+                    </div>
+                </body>
+                ',
+                htmlspecialchars((string) $user->getFirstname())
+            ));
+
+        $mailer->send($welcomeEmail);
+    } catch (\Throwable $e) {
+        return new JsonResponse(
+            [
+                'message' => 'Compte créé, mais erreur lors de l’envoi du mail de bienvenue.'
             ],
             Response::HTTP_CREATED
         );
     }
 
-    #[Route('/login', name: 'login', methods: ['POST'])]
-    #[OA\Post(
-        path: '/api/login',
-        summary: "Connexion d'un utilisateur"
-    )]
+    return new JsonResponse(
+        [
+            'message' => 'Inscription réussie',
+            'user' => $user->getUserIdentifier(),
+            'apiToken' => $user->getApiToken(),
+            'roles' => $user->getRoles(),
+        ],
+        Response::HTTP_CREATED
+    );
+}
+
     #[Route('/login', name: 'login', methods: ['POST'])]
     #[OA\Post(
         path: '/api/login',
@@ -265,7 +314,7 @@ class SecurityController extends AbstractController
             );
         }
 
-        $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/';
+        $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{10,}$/';
 
         if (!preg_match($passwordRegex, $newPassword)) {
             return new JsonResponse(
@@ -298,9 +347,9 @@ class SecurityController extends AbstractController
         }
 
         return $this->json([
-            'id' => $utilisateur->getId(),
-            'nom' => $utilisateur->getNom(),
-            'prenom' => $utilisateur->getPrenom(),
+            'id' => $utilisateur->getUtilisateurId(),
+            'nom' => $utilisateur->getName(),
+            'prenom' => $utilisateur->getFirstname(),
             'email' => $utilisateur->getEmail(),
             'telephone' => $utilisateur->getTelephone(),
         ]);
@@ -309,7 +358,7 @@ class SecurityController extends AbstractController
     private function isPasswordStrong(string $password): bool
     {
         return (bool) preg_match(
-            '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/',
+            '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{10,}$/',
             $password
         );
     }

@@ -16,10 +16,18 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use App\Service\MongoStatsService;
 
 #[Route('/api/commandes')]
 final class CommandeController extends AbstractController
 {
+    private MongoStatsService $mongoStatsService;
+
+    public function __construct(MongoStatsService $mongoStatsService)
+    {
+        $this->mongoStatsService = $mongoStatsService;
+    }
+
     #[Route('', name: 'api_commande_create', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
     public function create(
@@ -136,6 +144,23 @@ final class CommandeController extends AbstractController
         $entityManager->persist($commande);
         $entityManager->persist($historique);
         $entityManager->flush();
+
+       try {
+            $this->mongoStatsService->saveCommandeStat([
+                'commande_numero' => $commande->getNumeroCommande(),
+                'menu_id' => $menu->getMenuId(),
+                'menu_titre' => $menu->getTitre(),
+                'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
+                'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
+                'nombre_personnes' => $commande->getNombrePersonnes(),
+                'prix_menu' => round((float) $commande->getPrixMenu(), 2),
+                'prix_livraison' => round((float) $commande->getPrixLivraison(), 2),
+                'chiffre_affaire' => round((float) ($commande->getPrixMenu() + $commande->getPrixLivraison()), 2),
+                'statut' => $commande->getStatut(),
+            ]);
+        } catch (\Throwable $e) {
+            // À logger plus tard si besoin
+        }
 
         try {
             $email = (new Email())
@@ -392,6 +417,28 @@ final class CommandeController extends AbstractController
         }
 
         $entityManager->flush();
+        try {
+            $menu = $this->getCommandeMenu($commande);
+
+            if ($menu) {
+                $this->mongoStatsService->updateCommandeStat(
+                    $commande->getNumeroCommande(),
+                    [
+                        'menu_id' => $menu->getMenuId(),
+                        'menu_titre' => $menu->getTitre(),
+                        'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
+                        'date_prestation' => $commande->getDatePrestation()?->format('Y-m-d'),
+                        'nombre_personnes' => $commande->getNombrePersonnes(),
+                        'prix_menu' => round((float) $commande->getPrixMenu(), 2),
+                        'prix_livraison' => round((float) $commande->getPrixLivraison(), 2),
+                        'chiffre_affaire' => round((float) ($commande->getPrixMenu() + $commande->getPrixLivraison()), 2),
+                        'statut' => $commande->getStatut(),
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
 
         return $this->json($this->serializeCommande($commande));
     }
@@ -439,6 +486,20 @@ final class CommandeController extends AbstractController
         }
 
         $entityManager->flush();
+
+        try {
+            $this->mongoStatsService->updateCommandeStat(
+                $commande->getNumeroCommande(),
+                [
+                    'statut' => $commande->getStatut(),
+                    'prix_menu' => 0,
+                    'prix_livraison' => 0,
+                    'chiffre_affaire' => 0,
+                ]
+            );
+        } catch (\Throwable $e) {
+                // Optionnel : logger plus tard
+        }
 
         return $this->json($this->serializeCommande($commande));
     }
@@ -499,6 +560,20 @@ final class CommandeController extends AbstractController
         }
 
         $entityManager->flush();
+
+        try {
+            $this->mongoStatsService->updateCommandeStat(
+                $commande->getNumeroCommande(),
+                [
+                    'statut' => $commande->getStatut(),
+                    'prix_menu' => 0,
+                    'prix_livraison' => 0,
+                    'chiffre_affaire' => 0,
+                ]
+            );
+        } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
 
         try {
             $client = $commande->getUtilisateur();
@@ -606,6 +681,29 @@ final class CommandeController extends AbstractController
 
         $entityManager->persist($historique);
         $entityManager->flush();
+
+       try {
+            $mongoData = [
+                'statut' => $commande->getStatut(),
+            ];
+
+            if ($commande->getStatut() === 'annulee') {
+                $mongoData['prix_menu'] = 0;
+                $mongoData['prix_livraison'] = 0;
+                $mongoData['chiffre_affaire'] = 0;
+            } else {
+                $mongoData['prix_menu'] = round((float) $commande->getPrixMenu(), 2);
+                $mongoData['prix_livraison'] = round((float) $commande->getPrixLivraison(), 2);
+                $mongoData['chiffre_affaire'] = round((float) ($commande->getPrixMenu() + $commande->getPrixLivraison()), 2);
+            }
+
+            $this->mongoStatsService->updateCommandeStat(
+                $commande->getNumeroCommande(),
+                $mongoData
+            );
+        } catch (\Throwable $e) {
+            // Optionnel : logger plus tard
+        }
 
         try {
             $client = $commande->getUtilisateur();
@@ -764,15 +862,6 @@ final class CommandeController extends AbstractController
             }
         }
 
-        $avisDejaLaisse = false;
-
-        foreach ($commande->getAvis() as $avis) {
-            if ($avis->getUtilisateur()?->getUtilisateurId() === $commande->getUtilisateur()?->getUtilisateurId()) {
-                $avisDejaLaisse = true;
-                break;
-            }
-        }
-
         return [
             'numero_commande' => $commande->getNumeroCommande(),
             'date_commande' => $commande->getDateCommande()?->format('Y-m-d'),
@@ -798,7 +887,6 @@ final class CommandeController extends AbstractController
             ] : null,
             'menus' => $menus,
             'historique_statuts' => $historiqueStatuts,
-            'avis_deja_laisse' => $avisDejaLaisse,
         ];
     }
 }

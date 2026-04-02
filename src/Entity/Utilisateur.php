@@ -89,13 +89,13 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'telephone', type: 'string', length: 50, nullable: false)]
     private ?string $telephone = null;
 
-    #[ORM\Column(name: 'ville', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'ville', type: 'string', length: 50, nullable: true)]
     private ?string $ville = null;
 
-    #[ORM\Column(name: 'pays', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'pays', type: 'string', length: 50, nullable: true)]
     private ?string $pays = null;
 
-    #[ORM\Column(name: 'adresse_postale', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'adresse_postale', type: 'string', length: 50, nullable: true)]
     private ?string $adressePostale = null;
 
     /**
@@ -197,7 +197,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->ville;
     }
 
-    public function setVille(string $ville): static
+    public function setVille(?string $ville): static
     {
         $this->ville = $ville;
 
@@ -209,19 +209,20 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->pays;
     }
 
-    public function setPays(string $pays): static
+    public function setPays(?string $pays): static
     {
         $this->pays = $pays;
 
         return $this;
     }
 
+
     public function getAdressePostale(): ?string
     {
         return $this->adressePostale;
     }
 
-    public function setAdressePostale(string $adressePostale): static
+    public function setAdressePostale(?string $adressePostale): static
     {
         $this->adressePostale = $adressePostale;
 
