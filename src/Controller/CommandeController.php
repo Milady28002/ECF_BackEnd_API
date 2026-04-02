@@ -197,7 +197,7 @@ final class CommandeController extends AbstractController
                     $commande->getPrixMenu() + $commande->getPrixLivraison()
                 ));
 
-            $mailer->send($email);
+            // $mailer->send($email); decommanter lorsque je pourrai utiliser de nouveau mailtrap
         } catch (\Throwable $e) {
             // Optionnel : logger plus tard
         }
@@ -737,41 +737,69 @@ final class CommandeController extends AbstractController
                 }
 
                 if ($subject && $title && $message) {
-                    $email = (new Email())
-                        ->from('no-reply@vite-gourmand.fr')
-                        ->to($client->getEmail())
-                        ->subject($subject)
-                        ->html(sprintf(
-                            '
-                            <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
-                              <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
-                                <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
-                                <h1 style="color:%s;">%s</h1>
+            $commandeUrl = sprintf(
+                'http://localhost:3001/#/commande-detail?id=%s',
+                urlencode((string) $commande->getNumeroCommande())
+            );
 
-                                <p>Bonjour %s,</p>
-                                <p>%s</p>
+            $ctaHtml = '';
 
-                                <div style="background:#f8f8f8; padding:15px; border-radius:8px; margin:15px 0;">
-                                  <p><strong>Numéro :</strong> %s</p>
-                                  <p><strong>Date :</strong> %s</p>
-                                  <p><strong>Heure :</strong> %s</p>
-                                </div>
+            if ($nouveauStatut === 'terminee') {
+                $ctaHtml = sprintf(
+                    '
+                    <p style="margin: 25px 0 10px;">
+                    Vous pouvez consulter votre commande et laisser un avis en cliquant ci-dessous :
+                    </p>
 
-                                <p>Merci pour votre confiance 🙏</p>
-                              </div>
-                            </body>
-                            ',
-                            htmlspecialchars($color),
-                            htmlspecialchars($title),
-                            htmlspecialchars((string) $client->getFirstname()),
-                            htmlspecialchars($message),
-                            htmlspecialchars((string) $commande->getNumeroCommande()),
-                            $commande->getDatePrestation()?->format('d/m/Y') ?? 'Non renseignée',
-                            htmlspecialchars((string) $commande->getHeureLivraison())
-                        ));
+                    <p style="margin: 20px 0 30px;">
+                    <a href="%s"
+                        style="display:inline-block; padding:14px 22px; background-color:#7bbd2f; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:bold;">
+                        Voir ma commande
+                    </a>
+                    </p>
+                    ',
+                    htmlspecialchars($commandeUrl, ENT_QUOTES, 'UTF-8')
+                );
+            }
 
-                    $mailer->send($email);
-                }
+            $email = (new Email())
+                ->from('no-reply@vite-gourmand.fr')
+                ->to($client->getEmail())
+                ->subject($subject)
+                ->html(sprintf(
+                    '
+                    <body style="font-family: Arial, sans-serif; background:#f5f5f5; padding:20px;">
+                    <div style="max-width:600px; margin:0 auto; background:#ffffff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                        <h2 style="color:#7bbd2f; margin-top:0;">Vite &amp; Gourmand</h2>
+                        <h1 style="color:%s;">%s</h1>
+
+                        <p>Bonjour %s,</p>
+                        <p>%s</p>
+
+                        <div style="background:#f8f8f8; padding:15px; border-radius:8px; margin:15px 0;">
+                        <p><strong>Numéro :</strong> %s</p>
+                        <p><strong>Date :</strong> %s</p>
+                        <p><strong>Heure :</strong> %s</p>
+                        </div>
+
+                        %s
+
+                        <p>Merci pour votre confiance 🙏</p>
+                    </div>
+                    </body>
+                    ',
+                    htmlspecialchars($color),
+                    htmlspecialchars($title),
+                    htmlspecialchars((string) $client->getFirstname()),
+                    htmlspecialchars($message),
+                    htmlspecialchars((string) $commande->getNumeroCommande()),
+                    $commande->getDatePrestation()?->format('d/m/Y') ?? 'Non renseignée',
+                    htmlspecialchars((string) $commande->getHeureLivraison()),
+                    $ctaHtml
+                ));
+
+            $mailer->send($email);
+        }
             }
         } catch (\Throwable $e) {
             // Optionnel : logger plus tard
