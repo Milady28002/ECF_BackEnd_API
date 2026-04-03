@@ -197,7 +197,7 @@ final class CommandeController extends AbstractController
                     $commande->getPrixMenu() + $commande->getPrixLivraison()
                 ));
 
-            // $mailer->send($email); decommanter lorsque je pourrai utiliser de nouveau mailtrap
+            // $mailer->send($email); decommenter lorsque je pourrai utiliser de nouveau mailtrap
         } catch (\Throwable $e) {
             // Optionnel : logger plus tard
         }
@@ -662,6 +662,18 @@ final class CommandeController extends AbstractController
         $statutActuel = $commande->getStatut();
         $nouveauStatut = $payload['statut'];
 
+        if ($nouveauStatut === 'retour_materiel' && !$commande->isPretMateriel()) {
+            return $this->json([
+                'message' => 'Ce statut est impossible : aucun matériel n’a été prêté pour cette commande.'
+            ], 422);
+        }
+
+        if ($nouveauStatut === 'retour_materiel' && !$commande->isPretMateriel()) {
+            return $this->json([
+                'message' => 'Ce statut n’est possible que si du matériel a été prêté au client.'
+            ], 422);
+        }
+
         if (!isset($transitionsAutorisees[$statutActuel])) {
             return $this->json(['message' => 'Statut actuel invalide'], 422);
         }
@@ -730,6 +742,11 @@ final class CommandeController extends AbstractController
                     $subject = 'Votre commande a été livrée';
                     $title = 'Commande livrée';
                     $message = 'Votre commande a bien été livrée.';
+                } elseif ($nouveauStatut === 'retour_materiel') {
+                    $subject = 'En attente du retour de matériel';
+                    $title = 'En attente du retour de matériel';
+                    $message = 'Votre commande est terminée, mais nous sommes actuellement en attente du retour du matériel prêté.';
+                    $color = '#d39e00';
                 } elseif ($nouveauStatut === 'terminee') {
                     $subject = 'Votre commande est terminée';
                     $title = 'Commande terminée';
@@ -737,10 +754,10 @@ final class CommandeController extends AbstractController
                 }
 
                 if ($subject && $title && $message) {
-            $commandeUrl = sprintf(
-                'http://localhost:3001/#/commande-detail?id=%s',
-                urlencode((string) $commande->getNumeroCommande())
-            );
+                $commandeUrl = sprintf(
+                    'http://127.0.0.1:3001/#/commande-detail?id=%s',
+                    urlencode((string) $commande->getNumeroCommande())
+                );
 
             $ctaHtml = '';
 
@@ -760,6 +777,26 @@ final class CommandeController extends AbstractController
                     ',
                     htmlspecialchars($commandeUrl, ENT_QUOTES, 'UTF-8')
                 );
+            }
+
+            $extraContent = '';
+
+            if ($nouveauStatut === 'retour_materiel') {
+                $extraContent = '
+                    <div style="background:#fff8e6; border:1px solid #f0d58a; padding:15px; border-radius:8px; margin:20px 0;">
+                        <p style="margin-top:0;"><strong>Retour du matériel prêté</strong></p>
+                        <p>
+                            Du matériel vous a été prêté dans le cadre de votre commande.
+                        </p>
+                        <p>
+                            Nous vous invitons à prendre contact avec notre société afin d’organiser sa restitution.
+                        </p>
+                        <p>
+                            Conformément à nos conditions générales de vente, si le matériel n’est pas restitué sous
+                            <strong>10 jours ouvrés</strong>, des frais de <strong>600 €</strong> pourront vous être facturés.
+                        </p>
+                    </div>
+                ';
             }
 
             $email = (new Email())
@@ -784,6 +821,8 @@ final class CommandeController extends AbstractController
 
                         %s
 
+                        %s
+
                         <p>Merci pour votre confiance 🙏</p>
                     </div>
                     </body>
@@ -795,9 +834,14 @@ final class CommandeController extends AbstractController
                     htmlspecialchars((string) $commande->getNumeroCommande()),
                     $commande->getDatePrestation()?->format('d/m/Y') ?? 'Non renseignée',
                     htmlspecialchars((string) $commande->getHeureLivraison()),
-                    $ctaHtml
+                    $ctaHtml,
+                    $extraContent
                 ));
 
+            file_put_contents(
+                __DIR__ . '/../../public/test-mail-terminee.html',
+                $email->getHtmlBody()
+            );
             $mailer->send($email);
         }
             }
