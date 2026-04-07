@@ -68,6 +68,10 @@ final class CommandeController extends AbstractController
 
         $nombrePersonnes = (int) $payload['nombre_personnes'];
 
+        if ($nombrePersonnes <= 0) {
+            return $this->json(['message' => 'Nombre de personnes invalide'], 422);
+        }
+
         if ($nombrePersonnes < $menu->getNombrePersonneMinimum()) {
             return $this->json([
                 'message' => sprintf(
@@ -78,7 +82,10 @@ final class CommandeController extends AbstractController
         }
 
         if ($menu->getQuantiteRestante() <= 0) {
-            return $this->json(['message' => 'Ce menu n’est plus disponible'], 422);
+            return $this->json([
+                'message' => 'Ce menu n’est plus disponible',
+                'code' => 'OUT_OF_STOCK'
+            ], 422);
         }
 
         try {
@@ -662,11 +669,6 @@ final class CommandeController extends AbstractController
         $statutActuel = $commande->getStatut();
         $nouveauStatut = $payload['statut'];
 
-        if ($nouveauStatut === 'retour_materiel' && !$commande->isPretMateriel()) {
-            return $this->json([
-                'message' => 'Ce statut est impossible : aucun matériel n’a été prêté pour cette commande.'
-            ], 422);
-        }
 
         if ($nouveauStatut === 'retour_materiel' && !$commande->isPretMateriel()) {
             return $this->json([
