@@ -204,7 +204,7 @@ final class CommandeController extends AbstractController
                     $commande->getPrixMenu() + $commande->getPrixLivraison()
                 ));
 
-            // $mailer->send($email); decommenter lorsque je pourrai utiliser de nouveau mailtrap
+            $mailer->send($email);
         } catch (\Throwable $e) {
             // Optionnel : logger plus tard
         }

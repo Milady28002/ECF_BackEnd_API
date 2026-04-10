@@ -217,16 +217,16 @@ public function register(Request $request, MailerInterface $mailer): JsonRespons
             ]);
         }
 
-        $token = bin2hex(random_bytes(32));
+       $token = bin2hex(random_bytes(32));
 
         $user->setResetToken($token);
         $user->setResetTokenExpiresAt(new \DateTime('+1 hour'));
 
-        $this->manager->flush();
-
         $resetLink = 'http://127.0.0.1:3001/#/reset-password?token=' . $token;
 
         try {
+            $this->manager->flush();
+
             $email = (new Email())
                 ->from('no-reply@vite-gourmand.fr')
                 ->to($user->getEmail())
@@ -260,7 +260,7 @@ public function register(Request $request, MailerInterface $mailer): JsonRespons
             $mailer->send($email);
         } catch (\Throwable $e) {
             return new JsonResponse(
-                ['message' => 'Erreur lors de l’envoi de l’email'],
+                ['message' => 'Erreur lors de l’envoi de l’email de réinitialisation'],
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
@@ -318,7 +318,7 @@ public function register(Request $request, MailerInterface $mailer): JsonRespons
 
         if (!preg_match($passwordRegex, $newPassword)) {
             return new JsonResponse(
-                ['message' => 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'],
+                ['message' => 'Le mot de passe doit contenir au moins 10 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.'],
                 Response::HTTP_BAD_REQUEST
             );
         }
