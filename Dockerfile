@@ -17,6 +17,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 
 COPY . .
 
+RUN touch .env
+
 COPY Caddyfile /etc/caddy/Caddyfile
 
 ENV APP_ENV=prod
