@@ -123,7 +123,7 @@ public function register(Request $request, MailerInterface $mailer): JsonRespons
                         <p>Vous pouvez désormais vous connecter et accéder à votre espace personnel.</p>
 
                         <p style="margin:24px 0;">
-                            <a href="http://127.0.0.1:3001/#/signin" style="background:#7bbd2f; color:#fff; text-decoration:none; padding:12px 20px; border-radius:8px; display:inline-block;">
+                            <a href="https://ecf-front-end.vercel.app/#/signin" style="background:#7bbd2f; color:#fff; text-decoration:none; padding:12px 20px; border-radius:8px; display:inline-block;">
                                 Se connecter
                             </a>
                         </p>
@@ -222,7 +222,7 @@ public function register(Request $request, MailerInterface $mailer): JsonRespons
         $user->setResetToken($token);
         $user->setResetTokenExpiresAt(new \DateTime('+1 hour'));
 
-        $resetLink = 'http://127.0.0.1:3001/#/reset-password?token=' . $token;
+        $resetLink = 'https://ecf-front-end.vercel.app/#/reset-password?token=' . $token;
 
         try {
             $this->manager->flush();

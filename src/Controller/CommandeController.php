@@ -757,7 +757,7 @@ final class CommandeController extends AbstractController
 
                 if ($subject && $title && $message) {
                 $commandeUrl = sprintf(
-                    'http://127.0.0.1:3001/#/commande-detail?id=%s',
+                    'https://ecf-front-end.vercel.app/#/commande-detail?id=%s',
                     urlencode((string) $commande->getNumeroCommande())
                 );
 
