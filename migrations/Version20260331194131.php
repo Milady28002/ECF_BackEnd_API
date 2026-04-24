@@ -44,7 +44,7 @@ final class Version20260331194131 extends AbstractMigration
         $this->addSql('ALTER TABLE commande_menu ADD CONSTRAINT FK_16693B70CCD7E912 FOREIGN KEY (menu_id) REFERENCES menu (menu_id)');
         $this->addSql('ALTER TABLE commande_statut_historique ADD CONSTRAINT FK_634BFC75F70E1A4B FOREIGN KEY (commande_numero) REFERENCES commande (numero_commande)');
         $this->addSql('ALTER TABLE commande_statut_historique ADD CONSTRAINT FK_634BFC75FB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (utilisateur_id)');
-        $this->addSql('ALTER TABLE menu ADD CONSTRAINT FK_7D053A9335E7D534 FOREIGN symKEY (regime_id) REFERENCES regime (regime_id)');
+        $this->addSql('ALTER TABLE menu ADD CONSTRAINT FK_7D053A9335E7D534 FOREIGN KEY (regime_id) REFERENCES regime (regime_id)');
         $this->addSql('ALTER TABLE menu ADD CONSTRAINT FK_7D053A9359027487 FOREIGN KEY (theme_id) REFERENCES theme (theme_id)');
         $this->addSql('ALTER TABLE menu_plat ADD CONSTRAINT FK_E8775249CCD7E912 FOREIGN KEY (menu_id) REFERENCES menu (menu_id)');
         $this->addSql('ALTER TABLE menu_plat ADD CONSTRAINT FK_E8775249D73DB560 FOREIGN KEY (plat_id) REFERENCES plat (plat_id)');
