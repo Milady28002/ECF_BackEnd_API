@@ -14,6 +14,7 @@ Il expose une **API REST sécurisée** permettant de gérer :
 - les statistiques administrateur  
 
 Le backend est responsable de la logique métier, de la gestion des données et de la sécurité de l’application.
+Il communique avec une base de données relationnelle (MariaDB) et une base NoSQL (MongoDB) pour les statistiques.
 
 ---
 
@@ -90,34 +91,41 @@ Le backend est responsable de la logique métier, de la gestion des données et 
 
 ## Installation
 
-```bash
 1. Cloner le dépôt :
+
+```bash
 git clone https://github.com/Milady28002/ECF_BackEnd_API.git
 cd ECF_BackEnd_API
+```
+
+2. Installer les dépendances :
+```bash
 composer install
 ```
 ---
 
 ## Configuration
-Variable importante
 
-Dans .env.local :
+Variables importantes dans `.env.local` :
 
-DATABASE_URL="mysql://root:@127.0.0.1:3306/db_vite_gourmand?serverVersion=10.4.32-MariaDB&charset=utf8mb4"
+```env
+DATABASE_URL="mysql://root:@127.0.0.1:3306/db_vite_gourmand"
 MAILER_DSN="smtp://localhost:1025"
 MONGODB_URL="mongodb://127.0.0.1:27017"
+```
 
 ---
 
 ## Base de données relationnelle
+
 Créer la base :
-
+```bash
 php bin/console doctrine:database:create
-
+```
 Lancer les migrations :
-
+```bash
 php bin/console doctrine:migrations:migrate
-
+```
 ---
 
 ## Base de données NoSQL
@@ -129,28 +137,34 @@ chiffre d’affaires
 ---
 
 ## Lancement du serveur
+
+```bash
 symfony server:start
+```
 
 ---
 
 ## Documentation API
 
 Disponible via NelmioApiDocBundle (Swagger) :
+```
 https://ecfbackendapi-production.up.railway.app/api/doc
-
+```
 
 ---
 
 ## Déploiement
 
 🌍Backend déployé sur Railway :
+```
 https://ecfbackendapi-production.up.railway.app/
-
+```
 ---
 
-Frontend
+## Frontend
+```
 https://github.com/Milady28002/ECF_FrontEnd
-
+```
 ---
 
 ## Sécurité
@@ -166,7 +180,7 @@ Important :
 ---
 
 ## Comptes de test :
-
+```
 👤 Utilisateur
 Email : dana.scully@user.com
 Mot de passe : Azerty@123
@@ -178,7 +192,7 @@ Mot de passe : Admin123!
 🔐 Administrateur
 Email : admin@vitegourmand.fr
 Mot de passe : Admin123!
-
+```
 ---
 
 ## Architecture
@@ -190,5 +204,5 @@ Mot de passe : Admin123!
 ---
 
 ## 👩‍💻 Autrice
-Projet réalisé par Sylvie Mendez alias Milady
+Projet réalisé par Sylvie Mendez (Milady)
 Formation Graduate Développeur Web Full Stack
