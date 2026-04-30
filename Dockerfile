@@ -1,26 +1,34 @@
-FROM dunglas/frankenphp:1-php8.3
+FROM php:8.3-fpm
 
-WORKDIR /app
-
-RUN install-php-extensions \
-    pdo_mysql \
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libicu-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    default-mysql-client \
+    && docker-php-ext-install \
     intl \
+    pdo \
+    pdo_mysql \
     zip \
-    opcache \
-    mongodb
+    opcache
+
+RUN pecl install mongodb \
+    && docker-php-ext-enable mongodb
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-COPY composer.json composer.lock ./
+WORKDIR /var/www/html
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 COPY . .
 
-RUN touch .env
+RUN composer install
 
-COPY Caddyfile /etc/caddy/Caddyfile
-
-ENV APP_ENV=prod
-
-CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
