@@ -11,16 +11,18 @@ RUN install-php-extensions \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+ENV APP_ENV=prod
+ENV APP_DEBUG=0
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 COPY composer.json composer.lock ./
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY . .
 
-RUN touch .env
+RUN composer dump-autoload --optimize
 
 COPY Caddyfile /etc/caddy/Caddyfile
-
-ENV APP_ENV=prod
 
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
