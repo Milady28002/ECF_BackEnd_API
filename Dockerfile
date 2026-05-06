@@ -27,8 +27,10 @@ WORKDIR /var/www/html
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
-COPY . .
+COPY composer.json composer.lock ./
 
-RUN composer install
+RUN composer install --no-scripts
+
+COPY . .
 
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
