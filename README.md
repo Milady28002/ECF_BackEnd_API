@@ -1,4 +1,4 @@
-# 🍽️ Vite & Gourmand - Backend API
+# Vite & Gourmand - Backend API
 
 ## Description
 
@@ -14,7 +14,9 @@ Il expose une **API REST sécurisée** permettant de gérer :
 - les statistiques administrateur  
 
 Le backend est responsable de la logique métier, de la gestion des données et de la sécurité de l’application.
-Il communique avec une base de données relationnelle (MariaDB) et une base NoSQL (MongoDB) pour les statistiques.
+Il communique avec 
+- une base de données relationnelle (MariaDB)
+- une base NoSQL (MongoDB) pour les statistiques.
 
 ---
 
@@ -26,7 +28,8 @@ Il communique avec une base de données relationnelle (MariaDB) et une base NoSQ
 - MariaDB  
 - MongoDB  
 - API REST  
-- Symfony Mailer  
+- Symfony Mailer 
+- Docker (environnement local) 
 
 ---
 
@@ -40,7 +43,7 @@ Il communique avec une base de données relationnelle (MariaDB) et une base NoSQ
 
 
 ### Menus et plats
-- Création / modification / suppression  
+- CRUD complet
 - Gestion des allergènes, régimes et thèmes  
 - Gestion du stock  
 
@@ -55,13 +58,12 @@ Il communique avec une base de données relationnelle (MariaDB) et une base NoSQ
   - en livraison  
   - livrée  
   - terminée  
-
 - Historique des statuts  
 - Annulation (client et employé)
 
 
 ### Avis
-- Ajout d’avis après commande terminée  
+- Ajout après commande terminée  
 - Validation par employé avant publication  
 
 
@@ -74,25 +76,61 @@ Il communique avec une base de données relationnelle (MariaDB) et une base NoSQ
 ### Statistiques (MongoDB)
 - Nombre de commandes par menu  
 - Chiffre d’affaires par menu  
-- Filtres par période et menu  
+- Filtres par période 
 
 ---
 
-## Prérequis
+## Docker
+Le projet utilise Docker pour fournir un environnement de développement complet.
 
-- PHP 8.2+  
-- Composer  
-- Symfony CLI  
-- MariaDB ou MySQL  
-- MongoDB  
-- Serveur mail configuré  
+L’environnement comprend :
+
+API Symfony
+MariaDB
+MongoDB
+Mailhog
+
+Les dépendances PHP sont installées automatiquement lors du build Docker.
+Le dossier **vendor** est isolé dans un volume Docker afin de ne pas être écrasé par le montage du code local.
 
 ---
+
+## Lancer le projet en local (Docker)
+Prérequis
+- Docker Desktop
+- Git
 
 ## Installation
 
-1. Cloner le dépôt :
+1. Cloner les repositories :
 
+```bash
+git clone https://github.com/Milady28002/ECF_BackEnd_API.git
+git clone https://github.com/Milady28002/ECF_Docker.git
+```
+
+2. Lancer l’environnement Docker :
+```bash
+cd ECF_Docker
+docker compose up -d --build
+```
+
+3. Initialiser la base de données :
+```bash
+docker compose exec backend php bin/console doctrine:migrations:migrate
+```
+---
+
+### Accès
+- API -> http://localhost:8000
+- Swagger -> http://localhost:8000/api/doc
+- Mailhog -> http://localhost:8026
+
+---
+
+## Installation sand Docker
+
+1. Cloner le dépôt :
 ```bash
 git clone https://github.com/Milady28002/ECF_BackEnd_API.git
 cd ECF_BackEnd_API
@@ -102,51 +140,31 @@ cd ECF_BackEnd_API
 ```bash
 composer install
 ```
----
 
-## Configuration
-
-Variables importantes dans `.env.local` :
-
+3. Configurer .env.local :
 ```env
 DATABASE_URL="mysql://root:@127.0.0.1:3306/db_vite_gourmand"
 MAILER_DSN="smtp://localhost:1025"
 MONGODB_URL="mongodb://127.0.0.1:27017"
 ```
 
----
-
-## Base de données relationnelle
-
-Créer la base :
+4. Créer la base et lancer les migrations :
 ```bash
 php bin/console doctrine:database:create
-```
-Lancer les migrations :
-```bash
 php bin/console doctrine:migrations:migrate
 ```
----
 
-## Base de données NoSQL
-MongoDB est utilisée pour stocker les statistiques :
-
-nombre de commandes
-chiffre d’affaires
-
----
-
-## Lancement du serveur
-
+5. Lancer le serveur :
 ```bash
-symfony server:start
+symfony serve
 ```
 
 ---
+
 
 ## Documentation API
 
-Disponible via NelmioApiDocBundle (Swagger) :
+Disponible via Swagger (NelmioApiDocBundle) :
 ```
 https://ecfbackendapi-production.up.railway.app/api/doc
 ```
@@ -155,7 +173,7 @@ https://ecfbackendapi-production.up.railway.app/api/doc
 
 ## Déploiement
 
-🌍Backend déployé sur Railway :
+Backend déployé sur Railway :
 ```
 https://ecfbackendapi-production.up.railway.app/
 ```
