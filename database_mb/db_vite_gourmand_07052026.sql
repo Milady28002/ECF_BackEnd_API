@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : lun. 27 avr. 2026 à 12:38
+-- Généré le : jeu. 07 mai 2026 à 14:58
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -99,12 +99,14 @@ CREATE TABLE `commande` (
 INSERT INTO `commande` (`numero_commande`, `date_commande`, `date_prestation`, `heure_livraison`, `adresse_livraison`, `prix_menu`, `prix_livraison`, `nombre_personnes`, `statut`, `motif_annulation`, `mode_contact_annulation`, `pret_materiel`, `restitution_materiel`, `utilisateur_id`) VALUES
 ('CMD11E8F4', '2026-04-01', '2026-04-02', '20:00', '12 Route Zone 51, 33200 Bordeaux', 29.9, 0, 1, 'terminee', NULL, NULL, 0, 0, 22),
 ('CMD17AE0A', '2026-04-08', '2026-04-18', '20:00', '13 Allée du Moulin, 33800 Bordeaux', 134.46, 0, 6, 'terminee', NULL, NULL, 0, 0, 27),
+('CMD226391', '2026-05-04', '2026-05-08', '19:30', '12 Route Zone 51, 33200 Bordeaux', 49.8, 0, 2, 'en_attente', NULL, NULL, 0, 0, 22),
 ('CMD2DFDCE', '2026-04-03', '2026-04-06', '19:00', '2 Route de l\'Avocat, 33600 Pessac', 24.9, 9.13, 1, 'en_attente', NULL, NULL, 0, 0, 24),
 ('CMD2E82FA', '2026-04-02', '2026-04-03', '20:00', '24 Impasse du Style, 33000 Bordeaux', 31.8, 0, 2, 'terminee', NULL, NULL, 0, 0, 23),
 ('CMD333B29', '2026-04-08', '2026-04-18', '20:00', '13 Allée du Moulin, 33800 Bordeaux', 134.46, 0, 6, 'en_attente', NULL, NULL, 0, 0, 27),
 ('CMD334F80', '2026-04-03', '2026-04-04', '19:00', '2 Route de l\'Avocat, 33600 Pessac', 18.9, 9.13, 1, 'livree', NULL, NULL, 0, 0, 24),
+('CMD46A4F9', '2026-05-04', '2026-05-06', '12:00', '12 rue de Paradis, 75008 Paris', 119.6, 10.9, 4, 'annulee', NULL, NULL, 1, 0, 22),
 ('CMD9F2753', '2026-04-02', '2026-04-18', '12:00', '13 Allée de la Source, 33210 Langon', 2020.5, 10.9, 50, 'terminee', NULL, NULL, 0, 0, 21),
-('CMDA3545D', '2026-04-13', '2026-05-02', '12:00', '12 Route Zone 51, 33200 Bordeaux', 429, 0, 10, 'en_attente', NULL, NULL, 1, 0, 22),
+('CMDA3545D', '2026-04-13', '2026-05-02', '12:00', '12 Route Zone 51, 33200 Bordeaux', 429, 0, 10, 'acceptee', NULL, NULL, 1, 0, 22),
 ('CMDAE294B', '2026-04-03', '2026-04-11', '12:30', '24 Impasse du Style, 33000 Bordeaux', 319.2, 0, 8, 'retour_materiel', NULL, NULL, 1, 0, 23),
 ('CMDC76A7D', '2026-04-01', '2026-04-02', '19:30', '12 Route Zone 51, 33200 Bordeaux', 224.1, 0, 10, 'annulee', NULL, NULL, 0, 0, 22),
 ('CMDE9D4E2', '2026-04-08', '2026-04-18', '20:00', '13 Allée du Moulin, 33800 Bordeaux', 134.46, 0, 6, 'annulee', NULL, NULL, 0, 0, 27),
@@ -128,10 +130,12 @@ CREATE TABLE `commande_menu` (
 INSERT INTO `commande_menu` (`commande_id`, `menu_id`) VALUES
 ('CMD11E8F4', 1),
 ('CMD17AE0A', 5),
+('CMD226391', 5),
 ('CMD2DFDCE', 5),
 ('CMD2E82FA', 10),
 ('CMD333B29', 5),
 ('CMD334F80', 4),
+('CMD46A4F9', 1),
 ('CMD9F2753', 9),
 ('CMDA3545D', 7),
 ('CMDAE294B', 6),
@@ -205,7 +209,10 @@ INSERT INTO `commande_statut_historique` (`id`, `ancien_statut`, `nouveau_statut
 (93, 'en_preparation', 'en_livraison', '2026-04-08 15:15:27', 'CMD17AE0A', 19),
 (94, 'en_livraison', 'livree', '2026-04-08 15:15:32', 'CMD17AE0A', 19),
 (95, 'livree', 'terminee', '2026-04-08 15:15:36', 'CMD17AE0A', 19),
-(96, 'creation', 'en_attente', '2026-04-13 09:29:14', 'CMDA3545D', 22);
+(96, 'creation', 'en_attente', '2026-04-13 09:29:14', 'CMDA3545D', 22),
+(97, 'creation', 'en_attente', '2026-05-04 12:17:54', 'CMD226391', 22),
+(98, 'creation', 'en_attente', '2026-05-04 15:56:52', 'CMD46A4F9', 22),
+(99, 'en_attente', 'acceptee', '2026-05-04 16:11:26', 'CMDA3545D', 19);
 
 -- --------------------------------------------------------
 
@@ -273,7 +280,7 @@ INSERT INTO `image_galerie` (`image_id`, `titre`, `url`, `categorie`, `created_a
 (21, 'Assiette garnie', '../assets/images/menus/assiette-garnie.jpg', 'cocktail', '2026-03-25 14:24:58'),
 (22, 'Canapés variés', '../assets/images/menus/canapés.jpg', 'sale', '2026-03-25 14:33:17'),
 (23, 'Gratin de courgettes', '../assets/images/menus/gratin_courgettes.jpg', 'sale', '2026-03-25 14:35:31'),
-(24, 'Ordoeuvres surprises', '../assets/images/menus/ordoeuvres.jpg', 'cocktail', '2026-03-25 14:36:27'),
+(24, 'Hors-d\'oeuvre surprises', '../assets/images/menus/hors-d oeuvre.jpg', 'cocktail', '2026-03-25 14:36:27'),
 (25, 'Suprême de poulet', '../assets/images/menus/supreme.jpg', 'sale', '2026-03-25 14:37:30'),
 (27, 'Super sandwich club', '../assets/images/menus/sandwiches.png', 'sale', '2026-03-25 15:31:56'),
 (28, 'Spaghettis à l\'italienne', '../assets/spaghetti-menus.jpg', 'sale', '2026-03-25 15:33:37');
@@ -306,7 +313,7 @@ INSERT INTO `menu` (`menu_id`, `titre`, `nombre_personne_minimum`, `prix_par_per
 (2, 'Menu Noël Prestige', 8, 39.9, 'Menu festif gourmand et savoureux pour Noël et Pâques', 20, '/assets/images/menus/menu-noel.png', 'Commande 7 jours avant ', 1, 2),
 (3, 'Menu Evénement', 20, 49.9, 'Menu authentique et convivial idéal pour anniversaires et réceptions.', 40, '/assets/images/menus/menu-evenement.jpg', 'Commande 7 jours avant ', 1, 3),
 (4, 'Menu Classique Solo', 1, 18.9, 'Menu individuel simple et gourmand, idéal pour un déjeuner ou un dîner en toute simplicité.', 9, '/assets/images/menus/veloute-galerie.jpg', 'Commande 24h avant ', 2, 1),
-(5, 'Menu Classique Gourmand', 1, 24.9, 'Menu classique plus généreux, parfait pour repas en solo ou en petit comité.', 7, '/assets/images/menus/thai-galerie.jpg', 'Commande 24h avant ', 1, 1),
+(5, 'Menu Classique Gourmand', 1, 24.9, 'Menu classique plus généreux, parfait pour repas en solo ou en petit comité.', 6, '/assets/images/menus/thai-galerie.jpg', 'Commande 24h avant ', 1, 1),
 (6, 'Menu Noël Authentique', 8, 39.9, 'Menu festif généreux pour les repas de Noël ou grandes occasions de fin d’année.', 19, '/assets/images/menus/asperges-galerie.jpg', 'Commande 7 jours avant ', 1, 2),
 (7, 'Menu Pâques Gourmand', 8, 42.9, 'Menu printanier savoureux, pensé pour célébrer Pâques en famille ou entre amis.', 19, '/assets/images/menus/agneau.jpg', 'Commande 7 jours avant ', 1, 2),
 (8, 'Menu Réception', 20, 49.9, 'Menu idéal pour anniversaires, réceptions et événements conviviaux.', 100, '/assets/images/menus/reception.jpg', 'Commande 7 jours avant ', 1, 3),
@@ -703,7 +710,7 @@ ALTER TABLE `avis`
 -- AUTO_INCREMENT pour la table `commande_statut_historique`
 --
 ALTER TABLE `commande_statut_historique`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
 
 --
 -- AUTO_INCREMENT pour la table `horaire`
