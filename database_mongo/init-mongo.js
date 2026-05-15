@@ -1,0 +1,172 @@
+db = db.getSiblingDB("vite_gourmand_stats");
+
+db.commande_stats.insertMany([
+  {
+    commande_numero: "CMDF90385",
+    menu_id: 4,
+    menu_titre: "Menu Classique Solo",
+    date_commande: "2026-04-01",
+    date_prestation: "2026-04-04",
+    nombre_personnes: 6,
+    prix_menu: 102.06,
+    prix_livraison: 0,
+    chiffre_affaire: 102.06,
+    statut: "terminee"
+  },
+  {
+    commande_numero: "CMD11E8F4",
+    menu_id: 1,
+    menu_titre: "Menu Classique Premium",
+    date_commande: "2026-04-01",
+    date_prestation: "2026-04-02",
+    nombre_personnes: 1,
+    prix_menu: 29.9,
+    prix_livraison: 0,
+    chiffre_affaire: 29.9,
+    statut: "terminee"
+  },
+  {
+    commande_numero: "CMDC76A7D",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-04-01",
+    date_prestation: "2026-04-02",
+    nombre_personnes: 10,
+    prix_menu: 0,
+    prix_livraison: 0,
+    chiffre_affaire: 0,
+    statut: "annulee"
+  },
+  {
+    commande_numero: "CMD9F2753",
+    menu_id: 9,
+    menu_titre: "Menu Cocktail Festif",
+    date_commande: "2026-04-02",
+    date_prestation: "2026-04-18",
+    nombre_personnes: 50,
+    prix_menu: 2020.5,
+    prix_livraison: 10.9,
+    chiffre_affaire: 2031.4,
+    statut: "terminee"
+  },
+  {
+    commande_numero: "CMD2E82FA",
+    menu_id: 10,
+    menu_titre: "Menu Classique Végétarien",
+    date_commande: "2026-04-02",
+    date_prestation: "2026-04-03",
+    nombre_personnes: 2,
+    prix_menu: 31.8,
+    prix_livraison: 0,
+    chiffre_affaire: 31.8,
+    statut: "terminee"
+  },
+  {
+    commande_numero: "CMDAE294B",
+    menu_id: 6,
+    menu_titre: "Menu Noël Authentique",
+    date_commande: "2026-04-03",
+    date_prestation: "2026-04-11",
+    nombre_personnes: 8,
+    prix_menu: 319.2,
+    prix_livraison: 0,
+    chiffre_affaire: 319.2,
+    statut: "retour_materiel"
+  },
+  {
+    commande_numero: "CMD334F80",
+    menu_id: 4,
+    menu_titre: "Menu Classique Solo",
+    date_commande: "2026-04-03",
+    date_prestation: "2026-04-04",
+    nombre_personnes: 1,
+    prix_menu: 18.9,
+    prix_livraison: 9.13,
+    chiffre_affaire: 28.03,
+    statut: "livree"
+  },
+  {
+    commande_numero: "CMD2DFDCE",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-04-03",
+    date_prestation: "2026-04-06",
+    nombre_personnes: 1,
+    prix_menu: 24.9,
+    prix_livraison: 9.13,
+    chiffre_affaire: 34.03,
+    statut: "en_attente"
+  },
+  {
+    commande_numero: "CMD333B29",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-04-08",
+    date_prestation: "2026-04-18",
+    nombre_personnes: 6,
+    prix_menu: 134.46,
+    prix_livraison: 0,
+    chiffre_affaire: 134.46,
+    statut: "en_attente"
+  },
+  {
+    commande_numero: "CMDE9D4E2",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-04-08",
+    date_prestation: "2026-04-18",
+    nombre_personnes: 6,
+    prix_menu: 0,
+    prix_livraison: 0,
+    chiffre_affaire: 0,
+    statut: "annulee"
+  },
+  {
+    commande_numero: "CMD17AE0A",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-04-08",
+    date_prestation: "2026-04-18",
+    nombre_personnes: 6,
+    prix_menu: 134.46,
+    prix_livraison: 0,
+    chiffre_affaire: 134.46,
+    statut: "terminee"
+  },
+  {
+    commande_numero: "CMDA3545D",
+    menu_id: 7,
+    menu_titre: "Menu Pâques Gourmand",
+    date_commande: "2026-04-13",
+    date_prestation: "2026-05-02",
+    nombre_personnes: 10,
+    prix_menu: 429,
+    prix_livraison: 0,
+    chiffre_affaire: 429,
+    statut: "acceptee"
+  },
+  {
+    commande_numero: "CMD226391",
+    menu_id: 5,
+    menu_titre: "Menu Classique Gourmand",
+    date_commande: "2026-05-04",
+    date_prestation: "2026-05-08",
+    nombre_personnes: 2,
+    prix_menu: 49.8,
+    prix_livraison: 0,
+    chiffre_affaire: 49.8,
+    statut: "en_attente"
+  },
+  {
+    commande_numero: "CMD46A4F9",
+    menu_id: 1,
+    menu_titre: "Menu Classique Premium",
+    date_commande: "2026-05-04",
+    date_prestation: "2026-05-06",
+    nombre_personnes: 4,
+    prix_menu: 0,
+    prix_livraison: 0,
+    chiffre_affaire: 0,
+    statut: "annulee"
+  }
+]);
