@@ -33,4 +33,6 @@ RUN composer install --no-scripts
 
 COPY . .
 
+RUN composer dump-autoload --optimize
+
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
