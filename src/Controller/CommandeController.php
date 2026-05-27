@@ -94,6 +94,31 @@ final class CommandeController extends AbstractController
             return $this->json(['message' => 'date_prestation invalide'], 422);
         }
 
+        $conditionsMenu = strtolower((string) $menu->getConditionsMenu());
+
+        $delaiJours = 0;
+
+        if (str_contains($conditionsMenu, '7 jours')) {
+            $delaiJours = 7;
+        } elseif (str_contains($conditionsMenu, '24h')) {
+            $delaiJours = 1;
+        }
+
+        $dateMinimum = new \DateTime();
+        $dateMinimum->setTime(0, 0, 0);
+        $dateMinimum->modify("+{$delaiJours} days");
+
+        $datePrestation->setTime(0, 0, 0);
+
+        if ($datePrestation < $dateMinimum) {
+            return $this->json([
+                'message' => sprintf(
+                    'Ce menu doit être commandé au minimum %s.',
+                    strtolower($menu->getConditionsMenu())
+                )
+            ], 422);
+        }
+
         $heureLivraison = trim((string) $payload['heure_livraison']);
 
         if ($heureLivraison === '') {
