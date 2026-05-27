@@ -125,7 +125,7 @@ final class PlatController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_plat_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_EMPLOYE')]
     public function delete(int $id, PlatRepository $repo, EntityManagerInterface $em): JsonResponse
     {
         $plat = $repo->find($id);

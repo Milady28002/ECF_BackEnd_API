@@ -416,7 +416,7 @@ INSERT INTO `plat` (`plat_id`, `titre_plat`, `type_plat`, `image_url`) VALUES
 (18, 'Petits légumes mijotés', '2', '/assets/images/menus/petits_legumes_mijotés.jpg'),
 (19, 'Gratin de courgettes', '2', '/assets/images/menus/gratin_courgettes.jpg'),
 (20, 'Assiette garnie', '2', '/assets/images/menus/assiette-garnie.jpg'),
-(21, 'Ordoeuvres variées', '2', 'assets/images/menus/ordoeuvres.jpg'),
+(21, 'Hors-d''oeuvre variées', '2', 'assets/images/menus/hors-d oeuvre.jpg'),
 (22, 'Canapés variés', '1', 'assets/images/menus/canapés.jpg'),
 (23, 'Fondant au chocolat', '3', 'assets/images/menus/fondant-chocolat.jpg'),
 (24, 'Tartare de Saumon', '1', '/assets/images/menus/tartare.jpg'),
