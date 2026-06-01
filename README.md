@@ -147,6 +147,7 @@ DATABASE_URL="mysql://root:@127.0.0.1:3306/db_vite_gourmand"
 MAILER_DSN="smtp://localhost:1025"
 MONGODB_URL="mongodb://127.0.0.1:27017"
 ```
+Les identifiants présents dans le fichier .env sont des identifiants dédiés à l’environnement Docker local fourni pour l’évaluation. Ils ne donnent accès à aucun service externe de production.
 
 4. Créer la base et lancer les migrations :
 ```bash
