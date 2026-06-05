@@ -128,7 +128,7 @@ docker compose exec backend php bin/console doctrine:migrations:migrate
 
 ---
 
-## Installation sand Docker
+## Installation sans Docker
 
 1. Cloner le dépôt :
 ```bash
